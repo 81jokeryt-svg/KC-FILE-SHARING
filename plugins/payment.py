@@ -209,7 +209,7 @@ async def admin_approve(client, call):
     u_id = parts[1]
     mins = parts[-1]
     
-    # ✅ FIX: Extracted raw calculation logic out of f-string expression mapping to clear syntax error
+    # Clean logic string operation outside of f-string
     item_id = "_join".join(parts[2:-1]) if "_join" in call.data else "_".join(parts[2:-1])
     
     data = await db.db.channels_col.find_one({"item_id": item_id}) or \
@@ -223,15 +223,17 @@ async def admin_approve(client, call):
 
     # ─── CASE A: COMBO PACK DISTRIBUTION PIPELINE ───
     if data.get('is_combo') and 'channels_list' in data:
-        msg = "🎁 <b>ᴄᴏᴍʙᴏ ᴘᴀᴄᴋ ᴀᴘᴘʀᴏᴠᴇ裝!</b>\n\nAapko sabhi linked channels ka access de diya gaya hai. Niche diye buttons se join karein:\n\n"
+        msg = "🎁 <b>ᴄᴏᴍʙᴏ ᴘᴀᴄᴋ ᴀᴘᴘʀᴏᴠᴇᴅ!</b>\n\nAapko sabhi linked channels ka access de diya gaya hai. Niche diye buttons se join karein:\n\n"
         for ch_id in data['channels_list']:
             await db.db.users_col.update_one({"user_id": int(u_id), "channel_id": int(ch_id)}, {"$set": {"expiry": expiry}}, upsert=True)
             try:
                 invite = await client.create_chat_invite_link(int(ch_id), member_limit=1)
                 ch_info = await db.db.channels_col.find_one({"channel_id": int(ch_id)})
+                
                 ch_title = ch_info.get('name') or ch_info.get('story_name') if ch_info else f"VIP Channel {ch_id}"
                 if ch_title and "\n" in ch_title:
                     ch_title = ch_title.split("\n")[0].strip()
+                
                 inline_buttons.append([InlineKeyboardButton(f"📢 Join: {ch_title}", url=invite.invite_link)])
             except Exception as e:
                 print(f"Combo Link Error: {e}")
@@ -248,8 +250,8 @@ async def admin_approve(client, call):
             validity_display = data.get('validity', mins)
             msg = (
                 f"✅ <b>ᴀᴘᴘʀᴏᴠᴇᴅ!</b>\n\n"
-                f"📂 <b><b>ᴄʜᴀɴɴᴇʟ:</b></b> <b>{data.get('name', 'VIP Channel')}</b>\n"
-                f"⏱️ <b><b>ᴠᴀʟɪᴅɪᴛʏ:</b></b> {validity_display if validity_display != 'manual' else 'Lifetime'}\n\n"
+                f"📂 <b>ᴄʜᴀɴɴᴇʟ:</b> <b>{data.get('name', 'VIP Channel')}</b>\n"
+                f"⏱️ <b>ᴠᴀʟɪᴅɪᴛʏ:</b> {validity_display if validity_display != 'manual' else 'Lifetime'}\n\n"
                 f"Join karne ke liye neeche button par click karein:\n\n"
                 f"⚠️ <i>Yeh link single use hai, ek baar use hone ke baad automatic expire ho jayegi!</i>"
             )
@@ -264,16 +266,20 @@ async def admin_approve(client, call):
         
         inline_buttons.append([InlineKeyboardButton("🚀 sᴛᴀʀᴛ sᴛᴏʀỹ", url=target_link)])
         
+        # Split logic handled strictly outside of f-string to prevent backslash syntax crash
+        raw_story_name = data.get('story_name', 'Premium Story')
+        clean_story_name = raw_story_name.split('\n')[0].strip()
         platform_info = f"\n📂 Platform: <code>{data.get('source')}</code>" if data.get('source') else ""
+        
         msg = (
-            f"🎉 <b><b>ᴘᴀʏᴍᴇɴᴛ ᴀᴘᴘʀᴏᴠᴇᴅ!</b></b>\n"
+            f"🎉 <b>ᴘᴀʏᴍᴇɴᴛ ᴀᴘᴘʀᴏᴠᴇᴅ!</b>\n"
             f"────────────────────\n"
-            f"📖 <b><b>sᴛᴏʀỹ:</b></b> {data.get('story_name', 'Premium Story').split('\n')[0].strip()}"
+            f"📖 <b>sᴛᴏʀỹ:</b> {clean_story_name}"
             f"{platform_info}\n"
-            f"💰 <b><b>ᴘʀɪᴄᴇ:</b></b> ₹{data.get('price', '49')}\n"
+            f"💰 <b>ᴘʀɪᴄɪɴɢ:</b> ₹{data.get('price', '49')}\n"
             f"────────────────────\n"
             f"➔ Niche diye gaye button par click karke apni full story access karein 👇"
-            )
+        )
 
     try:
         markup = InlineKeyboardMarkup(inline_buttons)
@@ -284,19 +290,23 @@ async def admin_approve(client, call):
     except Exception as e:
         print(f"Delivery Error: {e}")
         
+    # Standard format variables mapping
+    admin_caption = f"✅ Approved for User: {u_id}"
     await client.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.id,
-        caption=f"✅ Approved for User: {u_id}"
+        caption=admin_caption
     )
 
 
 @Client.on_callback_query(filters.regex("^rej_"))
 async def admin_reject(client, call):
     u_id = call.data.split('_')[1]
+    
+    reject_caption = "❌ Payment Rejected!"
     await client.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.id,
-        caption="❌ Payment Rejected!"
+        caption=reject_caption
     )
     await client.send_message(chat_id=int(u_id), text="❌ Aapka payment reject ho gaya hai. Support se baat karein.")
