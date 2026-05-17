@@ -36,18 +36,18 @@ class Database:
     async def delete_user(self, user_id):
         await self.col.delete_many({'id': int(user_id)})
 
-    # ─── STORE CHANNELS / STORIES METHODS (NEW ASYNC MOTOR INTEGRATION) ───
+    # ─── STORE CHANNELS / STORIES METHODS (ASYNC MOTOR INTEGRATION) ───
     async def get_stories_by_filter(self, query, skip, limit):
-        """Asynchronously fetch filtered items from channel collection"""
+        """Asynchronously fetch filtered items from channels_col"""
         cursor = self.db.channels_col.find(query).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
     async def count_stories_by_filter(self, query):
-        """Asynchronously count matching documents"""
+        """Asynchronously count matching documents from channels_col"""
         return await self.db.channels_col.count_documents(query)
 
     async def find_single_story(self, query):
-        """Asynchronously find one precise document"""
+        """Asynchronously find one precise document from channels_col"""
         return await self.db.channels_col.find_one(query)
 
 
