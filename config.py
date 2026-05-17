@@ -1,7 +1,3 @@
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
 import re
 import os
 from os import environ
@@ -66,6 +62,9 @@ PUBLIC_FILE_STORE = is_enabled((environ.get('PUBLIC_FILE_STORE', "False")), True
 # Verify Info :-
 VERIFY_MODE = bool(environ.get('VERIFY_MODE', False)) # Set True or False
 
+# 🌟 NEW: Verification Expiry Time Configuration (Default: 24 Hours in seconds)
+VERIFY_EXPIRE_TIME = int(environ.get("VERIFY_EXPIRE_TIME", "86400")) 
+
 # If Verify Mode Is True Then Fill All Required Variable, If False Then Don't Fill.
 SHORTLINK_URL = environ.get("SHORTLINK_URL", "") # shortlink domain without https://
 SHORTLINK_API = environ.get("SHORTLINK_API", "") # shortlink api
@@ -93,4 +92,4 @@ URL = environ.get("URL", "https://testofvjfilter-1fa60b1b8498.herokuapp.com/")
 
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+# Ask Doubt on telegram @KingVJ01_
