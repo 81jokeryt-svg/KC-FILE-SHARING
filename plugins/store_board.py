@@ -11,17 +11,17 @@ from pyrogram.types import (
     InlineKeyboardButton, 
     ReplyKeyboardRemove
 )
-from plugins.dbusers import db  # Path mapping perfectly synced now
+from plugins.dbusers import db
 
 # User states pagination track karne ke liye
 USER_STORE_STATES = {}
 
-# ─── 1. BOTTOM KEYBOARD CATEGORIES MENU ───
+# ─── 1. BOTTOM KEYBOARD CATEGORIES MENU (KUKU REMOVED) ───
 def get_categories_markup():
     """User ko niche reply keyboard me platforms dikhane ke liye"""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton("Pocket FM"), KeyboardButton("Kuku FM")],
+            [KeyboardButton("Pratilipi FM"), KeyboardButton("Pocket FM")],
             [KeyboardButton("Other")],
             [KeyboardButton("« Back to Menu")]
         ],
@@ -29,15 +29,15 @@ def get_categories_markup():
     )
 
 
-# ─── 2. PAGINATED ITEMS MENU ENGINE (ASYNC MOTOR FETCH + TITLE SPLIT) ───
+# ─── 2. PAGINATED ITEMS MENU ENGINE (PRATILIPI + POCKET + COMBO) ───
 async def get_store_pagination_markup(category_type, page=1):
     """Asynchronously matches database fields and slices items (8 items per page)"""
     limit = 8
     skip = (page - 1) * limit
     
-    # Database queries design according to source structure
-    if category_type == "kuku":
-        query = {"story_name": {"$exists": True}, "source": "kuku", "is_combo": {"$exists": False}}
+    # Kuku filter dropped -> Pratilipi filter assigned dynamically
+    if category_type == "pratilipi":
+        query = {"story_name": {"$exists": True}, "source": "pratilipi", "is_combo": {"$exists": False}}
     elif category_type == "pocket":
         query = {"story_name": {"$exists": True}, "source": "pocket", "is_combo": {"$exists": False}}
     elif category_type == "combo":
@@ -45,11 +45,9 @@ async def get_store_pagination_markup(category_type, page=1):
     else:
         query = {}
         
-    # Async methods execute from your database wrapper
     total_items = await db.count_stories_by_filter(query)
     
     if total_items == 0:
-        # Strict constraint check: database completely empty -> remains silent/safe
         return ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton("🚫 STORE IS EMPTY")],
@@ -94,15 +92,14 @@ async def store_board_central_router(client, message):
     user_id = message.from_user.id
     text = message.text
 
-    # Filtering parameters verification
-    allowed_keywords = ["Pocket FM", "Kuku FM", "Other", "🔙 BACK TO CATEGORIES", "« Back to Menu", "❌ CLOSE STORE", "🚫 STORE IS EMPTY"]
+    # Keywords strictly matched to new buttons
+    allowed_keywords = ["Pratilipi FM", "Pocket FM", "Other", "🔙 BACK TO CATEGORIES", "« Back to Menu", "❌ CLOSE STORE", "🚫 STORE IS EMPTY"]
     is_navigation = text in ["NEXT ›", "‹ PREV"]
     is_item_selection = any(char in text for char in ['[ ₹', '➔ ['])
 
     if text not in allowed_keywords and not is_navigation and not is_item_selection:
         return 
 
-    # Main dashboard exit logic
     if text in ["« Back to Menu", "❌ CLOSE STORE"]:
         USER_STORE_STATES[user_id] = {"category": "home", "page": 1}
         return await message.reply_text(
@@ -117,10 +114,10 @@ async def store_board_central_router(client, message):
             reply_markup=get_categories_markup()
         )
 
-    # State Categories router map
+    # State Categories router map (Kuku replaced with Pratilipi)
     category_map = {
+        "Pratilipi FM": ("pratilipi", "✨ <b>ᴘʀᴀᴛɪʟɪᴘɪ ғᴍ sᴛᴏʀɪᴇs</b>"),
         "Pocket FM": ("pocket", "🎧 <b>ᴘᴏᴄᴋᴇᴛ ғᴍ sᴛᴏʀɪᴇs</b>"),
-        "Kuku FM": ("kuku", "✨ <b>ᴋᴜᴋᴜ ғᴍ sᴛᴏʀɪᴇs</b>"),
         "Other": ("combo", "🎁 <b>✨ ᴘʀᴇᴍɪᴜᴍ ᴄᴏᴍʙᴏ ᴘᴀᴄᴋs ✨</b>")
     }
 
@@ -147,7 +144,7 @@ async def store_board_central_router(client, message):
             reply_markup=markup_keyboard
         )
 
-    # Item Selection Processing Block (Hides active reply keyboard seamlessly)
+    # Item Selection Processing Block (Hides reply keyboard layout)
     if is_item_selection:
         clean_name = text
         try:
@@ -168,11 +165,9 @@ async def store_board_central_router(client, message):
         else:
             data = await db.find_single_story({"story_name": {"$regex": f"^{re.escape(clean_name)}"}, "source": state["category"]})
 
-        # Out of database boundary check - Bot drops execution silently
         if not data:
             return 
 
-        # Triggers reply layer slide collapse
         loading_alert = await message.reply_text(
             "⏳ <i>Loading Story Details...</i>", 
             reply_markup=ReplyKeyboardRemove(), 
@@ -190,7 +185,7 @@ async def store_board_central_router(client, message):
         else:
             inline_markup.append([InlineKeyboardButton(f"💳 UNLOCK PREMIUM STORY - ₹{data.get('price', '49')}", callback_data=f"pay_{db_id}")])
             header = f"🔥 <b>ᴘʀᴇᴍɪᴜᴍ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀʏ ({data.get('source', 'audio')})</b>"
-            item_label = data.get('story_name').split("\n")[0].strip() # Aligned line filter rule
+            item_label = data.get('story_name').split("\n")[0].strip() # First line split check
             desc_text = "🤖 <b>**ᴅᴇʟɪᴠᴇʀʏ:**</b> <code><b>ɪɴsᴛᴀɴᴛ ʙᴏᴛ ʟɪɴᴋ ᴀᴄᴄᴇss</b></code>"
 
         if data.get('demo_link'):
@@ -225,7 +220,6 @@ async def process_return_store_callback(client, call):
     state = USER_STORE_STATES.get(user_id, {"category": "pocket", "page": 1})
     markup_keyboard = await get_store_pagination_markup(state["category"], page=state["page"])
     
-    # Inline back par tap karte hi keyboard automatic pop-up ho jayega
     await client.send_message(
         chat_id=call.message.chat.id, 
         text="👇 <i>Apni pasand ka item select karke full access lein:</i>", 
