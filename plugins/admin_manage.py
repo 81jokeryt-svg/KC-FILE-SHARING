@@ -108,7 +108,7 @@ async def add_start(client, message):
     
     ADMIN_MGMT_STATES[message.from_user.id] = {"step": "awaiting_forward"}
     await message.reply_text(
-        "📢 <b>ᴀ_ᴅ_ᴅ  <b>ᴄ_ʜ_ᴀ_ɴ__ɴ_ᴇ_ʟ</b>:</b>\n\n"
+        "📢 <b>ᴀ_ᴅ_ᴅ  ᴄ_ʜ_ᴀ_ɴ__ɴ_ᴇ_ʟ:</b>\n\n"
         "➔ Jis channel ko add karna hai, us channel ka koi bhi ek post yahan <b>Forward</b> karein:", 
         parse_mode=enums.ParseMode.HTML
     )
@@ -124,7 +124,7 @@ async def add_combo_start(client, message):
     
     ADMIN_MGMT_STATES[message.from_user.id] = {"step": "combo_name"}
     await message.reply_text(
-        "🎁 <b>ᴍ_ᴀ_ɴ_ᴜ_ᴀ_ʟ  <b>ᴄ_ᴏ_ᴍ_ʙ_ᴏ</b>  s_ᴇ_ᴛ_ᴜ_ᴘ:</b>\n\n"
+        "🎁 <b>ᴍ_ᴀ_ɴ_ᴜ_ᴀ_ʟ  ᴄ_ᴏ_ᴍ_ʙ_ᴏ  s_ᴇ_ᴛ_ᴜ_ᴘ:</b>\n\n"
         "➔ Combo Pack ka Jo Naam <u>Store Board</u> par dikhana hai, wo bhejiyen:", 
         parse_mode=enums.ParseMode.HTML
     )
@@ -139,11 +139,14 @@ async def admin_central_router_engine(client, message):
     state = ADMIN_MGMT_STATES.get(user_id)
     
     if not state:
-        return # Drop out immediately if user is not an active admin executing commands
+        return 
 
-    if message.text and message.text.strip() == "/cancel":
-        ADMIN_MGMT_STATES.pop(user_id, None)
-        return await message.reply_text("❌ Action cancelled.")
+    # CRITICAL FIX: Direct text routing bypass standard commands to prevent instant loops
+    if message.text and message.text.strip().startswith("/"):
+        if message.text.strip() == "/cancel":
+            ADMIN_MGMT_STATES.pop(user_id, None)
+            return await message.reply_text("❌ Action cancelled.")
+        return
 
     step = state.get("step")
 
@@ -153,7 +156,6 @@ async def admin_central_router_engine(client, message):
             u_id = int(message.text.strip())
             ADMIN_MGMT_STATES.pop(user_id, None)
             
-            # Using database variable path matching your application scheme
             result = await db.db.users_col.delete_many({"user_id": u_id})
             if result.deleted_count > 0:
                 await message.reply_text(f"✅ <b>Success!</b>\nUser <code>{u_id}</code> ka access hata diya gaya.", parse_mode=enums.ParseMode.HTML)
@@ -168,7 +170,6 @@ async def admin_central_router_engine(client, message):
 
     # ─────────────── /add FORWARDED FLOW BLOCKS ───────────────
     elif step == "awaiting_forward":
-        # Verification checking structure for channel forwards
         is_forwarded = (
             message.forward_from_chat or 
             message.forward_from or 
@@ -178,7 +179,7 @@ async def admin_central_router_engine(client, message):
         if is_forwarded:
             if message.forward_from_chat:
                 ch_id = message.forward_from_chat.id
-                ch_name = message.forward_from_chat.title.split("\n")[0].strip() # Core rule application
+                ch_name = message.forward_from_chat.title.split("\n")[0].strip()
             else:
                 ch_id = message.chat.id
                 ch_name = "Private/Hidden Channel"
@@ -218,7 +219,7 @@ async def admin_central_router_engine(client, message):
         ADMIN_MGMT_STATES[user_id] = state
         
         await message.reply_text(
-            "🖼️ <b>ᴄʜᴀɴɴᴇʟ ᴘʜᴏᴛᴏ:</b>\nAap is channel ke liye koi custom photo lagana chahte hain?\n\n"
+            "🖼️ <b><b>ᴄʜᴀɴɴᴇʟ ᴘʜᴏᴛᴏ:</b></b>\nAap is channel ke liye koi custom photo lagana chahte hain?\n\n"
             "➔ Ek <b>Photo</b> bhejein.\n➔ Ya bina photo ke aage badhne ke liye <code>skip</code> likhein:",
             parse_mode=enums.ParseMode.HTML
         )
@@ -237,10 +238,9 @@ async def admin_central_router_engine(client, message):
     elif step == "add_demo":
         raw_text = message.text.strip() if message.text else ""
         demo = None if raw_text.lower() in ['none', 'skip', ''] else raw_text
-        ADMIN_MGMT_STATES.pop(user_id, None) # Clear layout session 
+        ADMIN_MGMT_STATES.pop(user_id, None)
 
         state_id = str(uuid.uuid4())[:8]
-        # Temp reference allocation matching callback router criteria
         ADMIN_MGMT_STATES[f"temp_{state_id}"] = {
             "ch_id": state["ch_id"], 
             "ch_name": state["ch_name"],
@@ -263,7 +263,7 @@ async def admin_central_router_engine(client, message):
         if not message.text:
             return await message.reply_text("❌ Valid Combo text name bhejein:")
             
-        state["combo_name"] = message.text.split("\n")[0].strip() # Aligned line filter rule
+        state["combo_name"] = message.text.split("\n")[0].strip()
         state["step"] = "combo_validity"
         ADMIN_MGMT_STATES[user_id] = state
         
@@ -281,7 +281,7 @@ async def admin_central_router_engine(client, message):
         ADMIN_MGMT_STATES[user_id] = state
         
         await message.reply_text(
-            "💰 <b>ᴘʀɪᴄɪɴɢ:</b>\nIs total combo package ka <b>Price (₹)</b> kitna rakhna hai? (Jaise: 149):",
+            "💰 <b><b>ᴘʀɪᴄɪɴɢ:</b></b>\nIs total combo package ka <b>Price (₹)</b> kitna rakhna hai? (Jaise: 149):",
             parse_mode=enums.ParseMode.HTML
         )
 
@@ -294,7 +294,7 @@ async def admin_central_router_engine(client, message):
         ADMIN_MGMT_STATES[user_id] = state
         
         await message.reply_text(
-            "🖼️ <b>ᴄᴏᴍʙᴏ ᴘʜᴏᴛᴏ:</b>\nIs bundle banner ke liye koi photo lagani hai?\n\n"
+            "🖼️ <b><b>ᴄᴏᴍʙᴏ ᴘʜᴏᴛᴏ:</b></b>\nIs bundle banner ke liye koi photo lagani hai?\n\n"
             "➔ Ek <b>Photo</b> send karein.\n➔ Ya skip karne ke liye <code>skip</code> likhein:",
             parse_mode=enums.ParseMode.HTML
         )
@@ -317,7 +317,7 @@ async def admin_central_router_engine(client, message):
         ADMIN_MGMT_STATES[user_id] = state
         
         await message.reply_text(
-            "🆔 <b>ᴄʜᴀɴɴᴇʟ ɪᴅs ʟɪsᴛ:</b>\nIs combo bundle ke andar aane wale saare channels ki <b>IDs</b> comma ( , ) laga kar dein:\n\n"
+            "🆔 <b><b>ᴄʜᴀɴɴᴇʟ ɪᴅs ʟɪsᴛ:</b></b>\nIs combo bundle ke andar aane wale saare channels ki <b>IDs</b> comma ( , ) laga kar dein:\n\n"
             "➔ <code>-100123456,-100987654</code>",
             parse_mode=enums.ParseMode.HTML
         )
@@ -332,10 +332,9 @@ async def admin_central_router_engine(client, message):
         except ValueError:
             return await message.reply_text("❌ <b>Format Error!</b> Keval IDs aur comma ka use karein. Dobara valid IDs bhejein:")
 
-        ADMIN_MGMT_STATES.pop(user_id, None) # Clear mapping 
+        ADMIN_MGMT_STATES.pop(user_id, None)
         item_id = f"combo_{str(uuid.uuid4())[:10]}"
         
-        # Asynchronously write payload structure mapped perfectly to your store rules
         await db.db.channels_col.insert_one({
             "item_id": item_id,
             "name": state["combo_name"],
@@ -353,13 +352,19 @@ async def admin_central_router_engine(client, message):
         bot_info = await client.get_me()
         bot_link = f"https://t.me/{bot_info.username}?start={item_id}"
         
+        # CRITICAL FIXED: Cleaned f-string literal values to avoid backslash interpolation errors
+        c_name = state['combo_name']
+        v_days = state['validity_days']
+        c_price = state['price']
+        ch_count = len(channel_ids_list)
+        
         success_text = (
-            f"¼½ <b>🎁 sᴘᴇᴄɪᴀʟ ᴄᴏᴍʙᴏ sᴀᴠᴇᴅ ɪɴ sᴛᴏʀᴇ!</b>\n"
+            f"🎁 <b>sᴘᴇᴄɪᴀʟ ᴄᴏᴍʙᴏ sᴀᴠᴇᴅ ɪɴ sᴛᴏʀᴇ!</b>\n"
             f"──────────────────────────\n"
-            f"🎁 <b>ᴄᴏᴍʙᴏ ɴᴀᴍᴇ:</b> <code>{state['combo_name']}</code>\n"
-            f"⏱️ <b>ᴠᴀʟɪᴅɪᴛʏ:</b> {state['validity_days']} Din\n"
-            f"💰 <b>ᴘʀɪᴄᴇ:</b> ₹{state['price']}\n"
-            f"📊 <b>ᴄʜᴀɴɴᴇʟs:</b> {len(channel_ids_list)} Linked\n\n"
+            f"🎁 <b>ᴄᴏᴍʙᴏ ɴᴀᴍᴇ:</b> <code>{c_name}</code>\n"
+            f"⏱️ <b>ᴠᴀʟɪᴅɪᴛʏ:</b> {v_days} Din\n"
+            f"💰 <b>ᴘʀɪᴄᴇ:</b> ₹{c_price}\n"
+            f"📊 <b>ᴄʜᴀɴɴᴇʟs:</b> {ch_count} Linked\n\n"
             f"🔗 <b>sʜᴀʀᴇ ʟɪɴᴋ (ᴜsᴇʀs):</b>\n<code>{bot_link}</code>\n"
             f"──────────────────────────"
         )
@@ -382,7 +387,6 @@ async def handle_category_selection(client, call):
     platform = "pocket" if parts[1] == "pocket" else "pratilipi"
     state_id = parts[2]
     
-    # Retrieve data from temporary storage mapping layout
     data = ADMIN_MGMT_STATES.get(f"temp_{state_id}")
     if not data:
         return await call.answer("Session Expired! Dubara /add karein.", show_alert=True)
@@ -393,9 +397,8 @@ async def handle_category_selection(client, call):
         pass
     
     item_id = str(uuid.uuid4())[:10]
-    ADMIN_MGMT_STATES.pop(f"temp_{state_id}", None) # Clear out temporary data pointer
+    ADMIN_MGMT_STATES.pop(f"temp_{state_id}", None)
     
-    # Async Update write operation
     await db.db.channels_col.update_one(
         {"item_id": item_id}, 
         {"$set": {
@@ -419,13 +422,17 @@ async def handle_category_selection(client, call):
     bot_info = await client.get_me()
     bot_link = f"https://t.me/{bot_info.username}?start={item_id}"
     
+    v_days = data['validity_days']
+    u_price = data['price']
+    d_link = data['demo_link'] if data['demo_link'] else 'None'
+    
     success_text = (
-        f"✅ <b>sᴛᴏʀỹ  sᴇᴛᴜᴘ  ғɪɴɪsʜᴇᴅ!</b>\n"
+        f"✅ <b>sᴛᴏʀỹ  sᴇᴛᴜᴘ  ... ɪɴɪsʜᴇᴅ!</b>\n"
         f"──────────────────────────\n"
         f"📂 <b>source:</b> <code>{platform}</code>\n"
-        f"⏱️ <b>validity:</b> {data['validity_days']} Din\n"
-        f"💰 <b>price:</b> ₹{data['price']}\n"
-        f"📺 <b>demo:</b> {data['demo_link'] if data['demo_link'] else 'None'}\n\n"
+        f"⏱️ <b>validity:</b> {v_days} Din\n"
+        f"💰 <b>price:</b> ₹{u_price}\n"
+        f"📺 <b>demo:</b> {d_link}\n\n"
         f"🔗 <b>sʜᴀʀᴇ ʟɪɴᴋ (ꜰᴏʀ ᴜsᴇʀs):</b>\n<code>{bot_link}</code>\n"
         f"──────────────────────────"
     )
