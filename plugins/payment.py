@@ -17,7 +17,7 @@ USER_PAYMENT_STATES = {}
 
 async def send_home_menu(client, chat_id):
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("« ʙᴀᴄᴋ ᴛᴏ ᴍᴇɴᴜ", callback_data="start")]
+        [InlineKeyboardButton("« ʙᴀᴄᴋ ᴛᴏ ᴍᴇṇᴜ", callback_data="start")]
     ])
     await client.send_message(
         chat_id=chat_id,
@@ -28,9 +28,10 @@ async def send_home_menu(client, chat_id):
 
 
 # --- 1. UNIFIED PAYMENT GATEWAY ROUTER ---
-@Client.on_callback_query(filters.regex("^pay_"))
+# FIXED: Isko 'pay_gateway_' par restrict kiya taaki niche waale 'man_' buttons se clash na ho
+@Client.on_callback_query(filters.regex("^pay_gateway_"))
 async def confirm_step(client, call):
-    db_id = call.data.split('_', 1)[1]
+    db_id = call.data.split('_', 2)[2] # Correct split for 'pay_gateway_ID'
     await call.answer("🔒 Securing connection Gateway...", show_alert=False)
     
     data = await db.db.channels_col.find_one({"item_id": db_id}) or \
@@ -52,24 +53,24 @@ async def confirm_step(client, call):
         price = data.get('price', '49')
         display_name = data.get('name', 'Premium Channel')
     
-    # FIXED: Callback data explicitly prefixed with 'pay_' to match handlers smoothly
+    # Buttons clean rakhe hain taaki alag-alag handlers me jaayein
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🚀 PAY VIA RAZORPAY", callback_data=f"pay_razor_{db_id}")],
-        [InlineKeyboardButton("📸 PAY VIA QR SCAN", callback_data=f"pay_man_{db_id}_{mins}_qr")],
-        [InlineKeyboardButton("📲 PAY VIA UPI ID", callback_data=f"pay_man_{db_id}_{mins}_upi")],
+        [InlineKeyboardButton("🚀 PAY VIA RAZORPAY", callback_data=f"razor_alert_{db_id}")],
+        [InlineKeyboardButton("📸 PAY VIA QR SCAN", callback_data=f"man_{db_id}_{mins}_qr")],
+        [InlineKeyboardButton("📲 PAY VIA UPI ID", callback_data=f"man_{db_id}_{mins}_upi")],
         [InlineKeyboardButton("❌ ᴄᴀṇᴄᴇʟ ᴘᴀỹᴍeṇᴛ", callback_data="cancel_payment")]
     ])
     
     text = (
         "📊 <code>Gateway option select karke payment complete karein.</code>\n\n"
-        "| 🔒 <b><u>sᴇᴄᴜʀᴇ ᴄʜᴇᴄᴋᴏᴜᴛ</u></b>\n"
+        "| 🔒 <b><u>sᴇᴄᴜʀᴇ ᴄʜᴇᴄᴋOᴜᴛ</u></b>\n"
         "──────────────────────────\n"
         f"📦 <b>ɪᴛᴇᴍ:</b> <code>{display_name}</code>\n"
         f"💰 <b>ᴛᴏᴛᴀʟ ᴘʀɪᴄᴇ:</b> <b>₹{price}</b>\n\n"
-        "✅ <b><u>ᴀᴜᴛᴏᴍᴀᴛɪᴄ ᴘᴀỹᴍᴇṇᴛ (ʀᴀᴢᴏʀᴘᴀỹ)</u></b>\n"
+        "✅ <b><u>ᴀᴜᴛOᴍᴀᴛɪᴄ ᴘᴀỹᴍᴇṇᴛ (ʀᴀᴢOʀᴘᴀỹ)</u></b>\n"
         "➔ <b>ʙᴇṇᴇғɪᴛs:</b> Instant Access (No waiting)\n\n"
         "📝 <b><u>ᴍᴀṇᴜᴀʟ ᴘᴀỹᴍᴇṇᴛ (ǫr & ᴜᴘɪ ɪᴅ)</u></b>\n"
-        "➔ <b>ᴘʀᴏᴄᴇss:</b> Pay ➔ Send Screenshot\n"
+        "➔ <b>ᴘʀOᴄᴇss:</b> Pay ➔ Send Screenshot\n"
         "──────────────────────────"
     )
     
@@ -82,7 +83,7 @@ async def confirm_step(client, call):
 
 
 # --- 2. RAZORPAY TEMPORARY MAINTENANCE ---
-@Client.on_callback_query(filters.regex("^pay_razor_"))
+@Client.on_callback_query(filters.regex("^razor_alert_"))
 async def razorpay_alert_handler(client, call):
     await call.answer(
         text="⚠️ Razorpay Gateway is currently under maintenance!\n\nPlease choose QR SCAN or UPI ID to unlock instantly.", 
@@ -91,12 +92,14 @@ async def razorpay_alert_handler(client, call):
 
 
 # --- 3. MANUAL PAYMENT EXECUTION GATEWAY ---
-@Client.on_callback_query(filters.regex("^pay_man_"))
+# FIXED: Yeh filter ab independent hai aur 'pay_' se clash nahi karega
+@Client.on_callback_query(filters.regex("^man_"))
 async def manual_pay(client, call):
+    await call.answer("📸 Generating Payment Details...", show_alert=False)
     parts = call.data.split('_')
     mode = parts[-1]                
     mins = parts[-2]                
-    db_id = "_".join(parts[2:-2]) # Adjusted index for new 'pay_man' format
+    db_id = "_".join(parts[1:-2]) 
     
     data = await db.db.channels_col.find_one({"item_id": db_id}) or \
            await db.db.channels_col.find_one({"channel_id": int(db_id) if db_id.replace('-','').isdigit() else 0})
@@ -108,13 +111,13 @@ async def manual_pay(client, call):
     display_name = data.get('combo_name') or data.get('story_name') or data.get('name', 'Premium Item')
     clean_title = display_name.split("\n")[0].strip()
         
-    upi_id_val = getattr(config, 'UPI_ID', 'heyjeetx@naviaxis')
+    upi_id_val = getattr(config, 'UPI_ID', '6398324472@fam')
     upi_string = f"upi://pay?pa={upi_id_val}&pn=Premium%20Store&am={price}&cu=INR&tn=Pay_{db_id}"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(upi_string)}"
     
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ sᴜʙᴍɪᴛ sᴄʀᴇeṇsʜᴏᴛ", callback_data=f"paid_{db_id}_{mins}")],
-        [InlineKeyboardButton("🔙 ʙᴀᴄᴋ", callback_data=f"pay_{db_id}")]
+        [InlineKeyboardButton("✅ sᴜʙᴍɪᴛ sᴄʀᴇeṇsʜOᴛ", callback_data=f"paid_{db_id}_{mins}")],
+        [InlineKeyboardButton("🔙 ʙᴀᴄᴋ", callback_data=f"pay_gateway_{db_id}")]
     ])
 
     try:
@@ -124,23 +127,23 @@ async def manual_pay(client, call):
 
     if mode == "qr":
         qr_caption = (
-            "📥 <b><u>[ ᴄᴏᴍᴘʟᴇᴛᴇ ᴘᴀỹᴍᴇṇᴛ ]</u></b>\n\n"
+            "📥 <b><u>[ ᴄOᴍᴘʟᴇᴛᴇ ᴘᴀỹᴍᴇṇᴛ ]</u></b>\n\n"
             "<b>🎯 Scan & Pay via QR Code</b>\n"
             "──────────────────────────\n"
             f"📦 <b>ɪᴛᴇᴍ:</b> <code>{clean_title}</code>\n"
-            f"💰 <b>ᴀᴍᴏᴜṇᴛ:</b> <code>₹{price}</code>\n"
+            f"💰 <b>ᴀᴍOᴜṇᴛ:</b> <code>₹{price}</code>\n"
             "──────────────────────────\n"
             "➔ <i>Apne PhonePe, GPay, Paytm ya kisi bhi upi app se scan karke pay karein aur screenshot submit karein.</i>"
         )
         await client.send_photo(call.message.chat.id, qr_url, caption=qr_caption, reply_markup=markup, parse_mode=enums.ParseMode.HTML)
     else:
         upi_layout = (
-            "📲 <b><u>[ ᴄᴏᴍᴘʟᴇᴛᴇ ᴘᴀỹᴍᴇṇᴛ ]</u></b>\n\n"
+            "📲 <b><u>[ ᴄOᴍᴘʟᴇᴛᴇ ᴘᴀỹᴍᴇṇᴛ ]</u></b>\n\n"
             "<b>🎯 Copy UPI ID & Pay Manual</b>\n"
             "──────────────────────────\n"
             f"💳 <b>uᴘɪ ɪᴅ:</b> <code>{upi_id_val}</code> (Tap to Copy)\n"
             f"📦 <b>ɪᴛᴇᴍ:</b> <code>{clean_title}</code>\n"
-            f"💰 <b>ᴀᴍᴏuṇᴛ:</b> <code>₹{price}</code>\n"
+            f"💰 <b>ᴀᴍOuṇᴛ:</b> <code>₹{price}</code>\n"
             "──────────────────────────\n"
             "➔ <i>UPI ID copy karke pay karein aur niche diye button par click karke screenshot submit karein.</i>"
         )
@@ -252,7 +255,7 @@ async def admin_approve(client, call):
     inline_buttons = []
 
     if data.get('is_combo') and 'channels_list' in data:
-        msg = "🎁 <b>ᴄᴏᴍʙᴏ ᴘᴀᴄᴋ ᴀᴘᴘʀOᴠEᴅ!</b>\n\nAapko sabhi linked channels ka access de diya gaya hai. Niche diye buttons se join karein:\n\n"
+        msg = "🎁 <b>ᴄOᴍʙO ᴘᴀᴄᴋ ᴀᴘᴘʀOᴠᴇᴅ!</b>\n\nAapko sabhi linked channels ka access de diya gaya hai. Niche diye buttons se join karein:\n\n"
         for ch_id in data['channels_list']:
             await db.db.users_col.update_one({"user_id": int(u_id), "channel_id": int(ch_id)}, {"$set": {"expiry": expiry}}, upsert=True)
             try:
@@ -270,9 +273,9 @@ async def admin_approve(client, call):
         try:
             invite = await client.create_chat_invite_link(chat_id=target_channel, member_limit=1)
             inline_buttons.append([InlineKeyboardButton("🔐 JOIN PREMIUM CHANNEL", url=invite.invite_link)])
-            msg = f"✅ <b>ᴀᴘᴘʀOᴠE尊!</b>\n\n📂 <b>ᴄʜᴀṇṇᴇʟ:</b> <b>{data.get('name', 'VIP Channel')}</b>\n\nJoin karne ke liye neeche button par click karein:"
+            msg = f"✅ <b>ᴀᴘᴘʀOᴠᴇᴅ!</b>\n\n📂 <b>ᴄʜᴀṇṇᴇʟ:</b> <b>{data.get('name', 'VIP Channel')}</b>\n\nJoin karne ke liye neeche button par click karein:"
         except: 
-            msg = "✅ <b>ᴀᴘᴘʀOᴠE尊!</b>\n\nBot link generate nahi kar saka, admin rights setup check karein."
+            msg = "✅ <b>ᴀᴘᴘʀOᴠᴇᴅ!</b>\n\nBot link generate nahi kar saka, admin rights setup check karein."
 
     else:
         await db.db.users_col.update_one({"user_id": int(u_id), "channel_id": data.get('channel_id', 0)}, {"$set": {"expiry": expiry}}, upsert=True)
@@ -283,7 +286,7 @@ async def admin_approve(client, call):
         clean_story_name = raw_story_name.split('\n')[0].strip()
         
         msg = (
-            f"🎉 <b>ᴘᴀỹᴍᴇṇᴛ ᴀᴘᴘʀOᴠE尊!</b>\n"
+            f"🎉 <b>ᴘᴀỹᴍᴇṇᴛ ᴀᴘᴘʀOᴠᴇᴅ!</b>\n"
             f"────────────────────\n"
             f"📖 <b>sᴛOʀỹ:</b> {clean_story_name}\n"
             f"💰 <b>ᴘʀɪᴄɪṇɢ:</b> ₹{data.get('price', '49')}\n"
