@@ -308,81 +308,19 @@ async def base_site_handler(client, m: Message):
         await m.reply("<b>Base Site updated successfully</b>")
 
 
-# ─── 🎯 CENTRAL SYSTEM CALLBACK HANDLER (FINAL RESOLVED ROUTER) ───
+# ─── 🎯 CENTRAL SYSTEM CALLBACK HANDLER ───
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
-    data = query.data
 
     # 🟢 1. HANDLE CONFIRM BUTTON CLICKS (Forward to payment.py)
-    if data.startswith("pay_"):
+    if query.data.startswith("pay_"):
         await query.answer("🔄 Processing Gateway...")
         from plugins.payment import confirm_step
         return await confirm_step(client, query)
 
-    # 💳 2. AUTOMATIC PAYMENT GATEWAY (RAZORPAY)
-    elif data.startswith("razorpay_"):
-        await query.answer("⚡ Opening Razorpay Portal...", show_alert=False)
-        return await query.message.reply_text("🚧 <b>Razorpay Auto-Gateway Under Maintenance. Kripya Manual Methods use darein!</b>")
-
-    # 📸 3. MANUAL UPI METHOD VIA QR CODE DISPLAY
-    elif data.startswith("qrscan_"):
-        await query.answer("📸 Generating Payment QR...")
-        db_id = data.split("_", 1)[1] if "_" in data else ""
-        
-        qr_buttons = [
-            [InlineKeyboardButton("✅ PAYMENT DONE", callback_data=f"done_{db_id}")],
-            [InlineKeyboardButton("🔙 BACK", callback_data=f"pay_{db_id}")]
-        ]
-        
-        qr_text = (
-            "<b>[ 📸 COMPLETE VIA QR SCAN ]</b>\n"
-            "──────────────────────────\n"
-            "📌 <b>UPI ID:</b> <code>heyjeetx@naviaxis</code>\n"
-            "👤 <b>Name:</b> <code>Jeetesh Meena</code>\n"
-            "──────────────────────────\n"
-            "📥 <b>Steps:</b>\n"
-            "1. Diye gaye UPI ID ko copy karein ya QR par scan karein.\n"
-            "2. Amount transfer karne ke baad niche <b>PAYMENT DONE</b> par click karein.\n"
-            "3. Apni payment receipt ka screenshot bot me submit karein."
-        )
-        try:
-            await query.message.edit_text(text=qr_text, reply_markup=InlineKeyboardMarkup(qr_buttons), parse_mode=enums.ParseMode.HTML)
-        except:
-            await client.send_message(chat_id=query.message.chat.id, text=qr_text, reply_markup=InlineKeyboardMarkup(qr_buttons))
-        return
-
-    # 📱 4. MANUAL DIRECT UPI TRANSFER METHOD
-    elif data.startswith("upiid_"):
-        await query.answer("📱 Fetching UPI Credentials...")
-        db_id = data.split("_", 1)[1] if "_" in data else ""
-        
-        upi_buttons = [
-            [InlineKeyboardButton("✅ PAYMENT DONE", callback_data=f"done_{db_id}")],
-            [InlineKeyboardButton("🔙 BACK", callback_data=f"pay_{db_id}")]
-        ]
-        
-        upi_layout = (
-            "<b>[ 📱 COMPLETE VIA UPI ID ]</b>\n"
-            "──────────────────────────\n"
-            "➡ <b>UPI ID:</b> <code>heyjeetx@naviaxis</code>\n"
-            "➡ <b>Account Holder Name:</b> <code>Jeetesh Meena</code>\n"
-            "──────────────────────────\n"
-            "💸 Kripya apne Payment app (PhonePe/GPay/Paytm) me is ID par secure payment karke niche diye button par click karein."
-        )
-        try:
-            await query.message.edit_text(text=upi_layout, reply_markup=InlineKeyboardMarkup(upi_buttons), parse_mode=enums.ParseMode.HTML)
-        except:
-            await client.send_message(chat_id=query.message.chat.id, text=upi_layout, reply_markup=InlineKeyboardMarkup(upi_buttons))
-        return
-
-    # 🧾 5. SCREENSHOT VERIFICATION SCREEN CALLBACK
-    elif data.startswith("done_"):
-        await query.answer("📩 Process Activated", show_alert=True)
-        return await query.message.reply_text("📥 <b>Kripya payment ka Successful Screenshot abhi yahan image format me send karein! Admin jald hi ise verify karke content link auto-approve kar dega.</b>")
-
-    # 🔵 6. HANDLE BACK BUTTON CLICKS (Return back to stories keyboard list)
-    elif data == "back_to_store_list":
+    # 🔵 2. HANDLE BACK BUTTON CLICKS (Return back to stories keyboard list)
+    if query.data == "back_to_store_list":
         await query.answer("🔙 Going Back...")
         try:
             await query.message.delete()
@@ -397,11 +335,11 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=markup_keyboard
         )
 
-    # 🟡 7. BASE KEYBOARD FUNCTIONS
-    elif data == "close_data":
+    # 🟡 3. BASE KEYBOARD FUNCTIONS
+    if query.data == "close_data":
         await query.message.delete()
         
-    elif data == "about":
+    elif query.data == "about":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
@@ -411,12 +349,12 @@ async def cb_handler(client: Client, query: CallbackQuery):
         me2 = (await client.get_me()).mention
         await query.message.edit_text(text=script.ABOUT_TXT.format(me2), reply_markup=reply_markup, parse_mode=enums.ParseMode.HTML)
     
-    elif data == "start":
+    elif query.data == "start":
         buttons = [
             [InlineKeyboardButton("🛍️ ᴏᴘᴇɴ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀᴇ 🛍️", callback_data="open_store")],
             [InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')],
             [
-                InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜภ', url='https://t.me/vj_bot_disscussion'),
+                InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
                 InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
             ],
             [
@@ -431,7 +369,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         me2 = (await client.get_me()).mention
         await query.message.edit_text(text=script.START_TXT.format(query.from_user.mention, me2), reply_markup=reply_markup, parse_mode=enums.ParseMode.HTML)
     
-    elif data == "clone":
+    elif query.data == "clone":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
@@ -440,7 +378,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.message.edit_text(text=script.CLONE_TXT.format(query.from_user.mention), reply_markup=reply_markup, parse_mode=enums.ParseMode.HTML)          
     
-    elif data == "help":
+    elif query.data == "help":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
@@ -449,7 +387,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.message.edit_text(text=script.HELP_TXT, reply_markup=reply_markup, parse_mode=enums.ParseMode.HTML) 
 
-    elif data == "open_store":
+    elif query.data == "open_store":
         await query.answer()
         try:
             from plugins.store_board import get_platform_markup
