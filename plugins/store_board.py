@@ -82,31 +82,39 @@ async def get_store_pagination_markup(category_type, page=1):
     return ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True)
 
 
-# ─── 3. INTERMEDIATE LAYOUT ENGINE (STEP 1 DETAILS VIEW) ───
+# ─── 3. INTERMEDIATE LAYOUT ENGINE (Dono flows ke liye same Details Card) ───
 async def show_story_details_by_id(client, chat_id, data):
-    """Deep link ya keyboard click par pehle Cover Photo aur Unlock Price button dikhane ke liye"""
+    """Deep link ya keyboard click dono par pehle Cover Photo aur Confirm button dikhane ke liye"""
     inline_markup = []
     db_id = str(data.get('item_id') or data.get('channel_id') or data.get('_id'))
 
     if data.get('is_combo'):
-        inline_markup.append([InlineKeyboardButton(f"✅ CONFIRM & PAY COMBO - ₹{data['price']}", callback_data=f"pay_{db_id}")])
-        header = "🎁 <b>ᴘʀᴇᴍɪᴜᴍ sᴘᴇᴄɪᴀʟ ᴄᴏᴍʙᴏ ʙᴜɴᴅʟᴇ</b>"
-        item_label = data.get('combo_name')
-        desc_text = f"📝 <b>ɪɴᴄʟᴜᴅᴇᴅ sᴛᴏʀɪᴇs:</b>\n<i>{data.get('description', 'All premium files included.')}</i>"
+        header = "🎁 <b><u>✨ ᴘʀᴇᴍɪᴜᴍ sᴘᴇᴄɪᴀʟ ᴄᴏᴍʙᴏ ʙᴜɴᴅʟᴇ ✨</u></b>"
+        item_label = data.get('combo_name', 'Premium Combo Pack')
+        desc_text = f"📝 <b>sᴛᴏʀỹ ᴅᴇsᴄʀɪᴘᴛɪᴏɴ:</b>\n<i>{data.get('description', 'All premium files included.')}</i>"
     else:
-        inline_markup.append([InlineKeyboardButton(f"🔓 UNLOCK PREMIUM STORY - ₹{data.get('price', '12')}", callback_data=f"pay_{db_id}")])
-        header = f"🔥 <b>ᴘʀᴇᴍɪᴜᴍ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀỹ ({data.get('source', 'audio').upper()})</b>"
-        
+        src_name = str(data.get('source', 'audio')).upper()
+        header = f"🔥 <b><u>✨ ᴘʀᴇᴍɪᴜᴍ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀỹ ({src_name}) ✨</u></b>"
         raw_lbl = data.get('story_name') or data.get('name') or 'Premium Story'
         item_label = raw_lbl.split("\n")[0].strip()
         desc_text = "🤖 <b>ᴅᴇʟɪᴠᴇʀỹ:</b> <code><b>ɪɴsᴛᴀɴᴛ ʙᴏᴛ ʟɪɴᴋ ᴀᴄᴄᴇss</b></code>"
 
+    # ✅ Dono flows me pehle yehi single button dikhega jo payment file me lekar jayega
+    inline_markup.append([InlineKeyboardButton("✅ CONFIRM", callback_data=f"pay_{db_id}")])
+    
     if data.get('demo_link'):
         inline_markup.append([InlineKeyboardButton("📺 ᴠɪᴇᴡ ǫᴜᴀʟɪᴛỹ ᴅᴇᴍᴏ", url=data['demo_link'])])
         
     inline_markup.append([InlineKeyboardButton("⬅️ BACK TO LIST", callback_data="back_to_store_list")])
 
-    details_layout = f"{header}\n──────────────────────────\n📦 <b><u>ɪᴛᴇᴍ ɴᴀᴍᴇ:</u></b> <code>{item_label}</code>\n💰 <b><u>ᴘʀɪᴄᴇ:</u></b> <b>₹{data.get('price', '12')}</b>\n\n{desc_text}\n──────────────────────────"
+    details_layout = (
+        f"{header}\n"
+        "──────────────────────────\n"
+        f"📦 <b><u>ɪᴛᴇᴍ ɴᴀᴍᴇ:</u></b> <code>{item_label}</code>\n"
+        f"💰 <b><u>ᴘʀɪᴄᴇ:</u></b> <b>₹{data.get('price', '12')}</b>\n\n"
+        f"{desc_text}\n"
+        "──────────────────────────"
+    )
     photo_id = data.get('file_id')
 
     if photo_id:
@@ -190,86 +198,4 @@ async def store_board_central_router(client, message):
                 data = await db.find_single_story({
                     "$or": [
                         {"story_name": {"$regex": re.escape(clean_name), "$options": "i"}},
-                        {"name": {"$regex": re.escape(clean_name), "$options": "i"}}
-                    ],
-                    "source": state["category"]
-                })
-                
-            if not data:
-                return await message.reply_text("❌ <i>Story Details nahi mil saki.</i>")
-
-        loading_alert = await message.reply_text("⏳ <i>Loading Story Details...</i>", reply_markup=ReplyKeyboardRemove())
-        try: await loading_alert.delete()
-        except: pass
-
-        await show_story_details_by_id(client, message.chat.id, data)
-
-
-# ─── 5. BACK TO LIST INLINE CALLBACK CONTROLLER ───
-@Client.on_callback_query(filters.regex("^back_to_store_list$"))
-async def process_return_store_callback(client, call):
-    user_id = call.from_user.id
-    await call.answer()
-    try: await call.message.delete()
-    except: pass
-        
-    state = USER_STORE_STATES.get(user_id, {"category": "pocket", "page": 1})
-    markup_keyboard = await get_store_pagination_markup(state["category"], page=state["page"])
-    
-    await client.send_message(
-        chat_id=call.message.chat.id, 
-        text="👇 <i>Apni pasand ka item select karke full access lein:</i>", 
-        reply_markup=markup_keyboard
-    )
-
-
-# ─── 6. FIXED CRITICAL: DELETE OLD PHOTO MESSAGE & SEND FRESH GATEWAY BLOCK ───
-@Client.on_callback_query(filters.regex("^pay_"))
-async def process_payment_gateway_routing(client, call):
-    """Unlock button click hone par photo/details ko delete karke fresh confirmation block bhejta hai"""
-    await call.answer("🔄 Preparing Checkout Summary...", show_alert=False)
-    story_id = call.data.split("_", 1)[1]
-    
-    # Accurate multi-index identifier recovery pattern matching
-    data = await db.find_single_story({
-        "$or": [
-            {"item_id": story_id},
-            {"channel_id": story_id},
-            {"_id": story_id}
-        ]
-    })
-    
-    if not data:
-        data = await db.find_single_story({"combo_name": story_id})
-        
-    price = data.get('price', '12') if data else '12'
-    title = data.get('combo_name') or (data.get('story_name') or data.get('name', 'Premium Item')).split("\n")[0].strip()
-
-    # Generation of Gateway Option Buttons Grid
-    payment_keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📸 PAY VIA QR SCAN", callback_data=f"qr_{story_id}")],
-        [InlineKeyboardButton("💳 PAY VIA UPI ID", callback_data=f"upi_{story_id}")],
-        [InlineKeyboardButton("❌ CANCEL PAYMENT", callback_data="back_to_store_list")]
-    ])
-    
-    payment_layout = (
-        "⚙️ <b><u>ᴄᴏɴғɪʀᴍ sᴇʟᴇᴄᴛɪᴏɴ</u></b>\n"
-        "──────────────────────────\n"
-        f"📦 <b>ɪᴛᴇᴍ:</b> <code>{title}</code>\n"
-        f"💰 <b>ᴀᴍᴏᴜɴᴛ:</b> <code>₹{price}</code>\n\n"
-        "➔ <b>ᴘᴀỹᴍᴇɴᴛ ᴍᴇᴛʜᴏᴅ sᴇʟᴇᴄᴛ ᴋᴀʀᴇɪɴ:</b>\n"
-        "──────────────────────────"
-    )
-    
-    # PHOTO LOGIC DELETION FIX: Delete the detailed photo message first
-    try:
-        await call.message.delete()
-    except Exception:
-        pass
-
-    # Sending fresh layout immediately in the channel flow context
-    await client.send_message(
-        chat_id=call.message.chat.id,
-        text=payment_layout,
-        reply_markup=payment_keyboard
-    )
+                        {"name": {"$regex": re.escape(clean_name), "$options": "i"}
