@@ -19,6 +19,7 @@ class StreamXBot(Client):
             plugins={"root": "plugins"},
             sleep_threshold=5,
         )
+
     async def iter_messages(
         self,
         chat_id: Union[int, str],
@@ -62,3 +63,5 @@ StreamBot = StreamXBot()
 
 multi_clients = {}
 work_loads = {}
+
+# __init__.py
