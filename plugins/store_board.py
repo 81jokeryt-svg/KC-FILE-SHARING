@@ -3,7 +3,7 @@
 # Ask Doubt on telegram @KingVJ01
 
 import re
-from pyrogram import Client, filters
+from pyrogram import Client, filters, enums  # Added enums import strictly here
 from pyrogram.types import (
     ReplyKeyboardMarkup, 
     KeyboardButton, 
@@ -66,10 +66,10 @@ async def get_store_pagination_markup(category_type, page=1):
     # Display Loop with First Line Title Rule integration
     for index, item in enumerate(sliced_items, start=skip + 1):
         if category_type == "combo":
-            btn_text = f"🎁 {index}. {item['combo_name']} ➔ [ ₹{item['price']} ]"
+            btn_text = f"🎁 {index}. {item.get('combo_name', 'Unnamed Combo')} ➔ [ ₹{item['price']} ]"
             keyboard_buttons.append([KeyboardButton(btn_text)])
         else:
-            raw_title = item.get('story_name', 'Unnamed Story')
+            raw_title = item.get('story_name') or item.get('name') or 'Unnamed Story'
             # Title Split Logic: Sirf pehli line ko title banata hai
             clean_title = raw_title.split("\n")[0].strip()
             btn_text = f"{index}. {clean_title} [ ₹{item.get('price', '49')} ]"
@@ -99,7 +99,7 @@ async def store_board_central_router(client, message):
     # Keywords strictly matched to new buttons
     allowed_keywords = ["Pratilipi FM", "Pocket FM", "Other", "🔙 BACK TO CATEGORIES", "« Back to Menu", "❌ CLOSE STORE", "🚫 STORE IS EMPTY"]
     is_navigation = text in ["NEXT ›", "‹ PREV"]
-    is_item_selection = any(char in text for char in ['[ ₹', '➔ ['])
+    is_item_selection = any(char in text for char in ['[ ₹', '➔ [', '[₹'])
 
     if text not in allowed_keywords and not is_navigation and not is_item_selection:
         return 
@@ -165,13 +165,34 @@ async def store_board_central_router(client, message):
         
         # Async Single document lookup based on active configuration
         if state["category"] == "combo":
-            data = await db.find_single_story({"combo_name": clean_name})
+            data = await db.find_single_story({"combo_name": {"$regex": f"^{re.escape(clean_name)}", "$options": "i"}})
         else:
-            data = await db.find_single_story({"story_name": {"$regex": f"^{re.escape(clean_name)}"}, "source": state["category"]})
+            # FIXED LOOKUP: $regex match strict start, ignoring trail spaces/case sensitive issues
+            data = await db.find_single_story({
+                "$or": [
+                    {"story_name": {"$regex": f"^{re.escape(clean_name)}", "$options": "i"}},
+                    {"name": {"$regex": f"^{re.escape(clean_name)}", "$options": "i"}}
+                ],
+                "source": state["category"]
+            })
 
         if not data:
-            return 
+            # Alternate fallback logic if strict start fails
+            if state["category"] == "combo":
+                data = await db.find_single_story({"combo_name": {"$regex": re.escape(clean_name), "$options": "i"}})
+            else:
+                data = await db.find_single_story({
+                    "$or": [
+                        {"story_name": {"$regex": re.escape(clean_name), "$options": "i"}},
+                        {"name": {"$regex": re.escape(clean_name), "$options": "i"}}
+                    ],
+                    "source": state["category"]
+                })
+                
+            if not data:
+                return await message.reply_text("❌ <i>Story Details nahi mil saki. Kripya list se sahi select karein.</i>")
 
+        # Visual cleanup alert
         loading_alert = await message.reply_text(
             "⏳ <i>Loading Story Details...</i>", 
             reply_markup=ReplyKeyboardRemove(), 
@@ -185,30 +206,32 @@ async def store_board_central_router(client, message):
             inline_markup.append([InlineKeyboardButton(f"✅ CONFIRM & PAY COMBO - ₹{data['price']}", callback_data=f"pay_{db_id}")])
             header = "🎁 <b>ᴘʀᴇᴍɪᴜᴍ sᴘᴇᴄɪᴀʟ ᴄᴏᴍʙᴏ ʙᴜɴᴅʟᴇ</b>"
             item_label = data.get('combo_name')
-            desc_text = f"📝 <b>ɪɴᴄʟᴜᴅᴇᴅ sᴛᴏʀɪᴇs:</b>\n<i>{data.get('description', '')}</i>"
+            desc_text = f"📝 <b>ɪɴᴄʟᴜᴅᴇᴅ sᴛᴏʀɪᴇs:</b>\n<i>{data.get('description', 'All premium files included.')}</i>"
         else:
             inline_markup.append([InlineKeyboardButton(f"💳 UNLOCK PREMIUM STORY - ₹{data.get('price', '49')}", callback_data=f"pay_{db_id}")])
-            header = f"🔥 <b>ᴘʀᴇᴍɪᴜᴍ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀʏ ({data.get('source', 'audio')})</b>"
-            item_label = data.get('story_name').split("\n")[0].strip() # First line split check
-            desc_text = "🤖 <b>ᴅᴇʟɪᴠᴇʀʏ:</b> <code><b>ɪɴsᴛᴀɴᴛ ʙᴏᴛ ʟɪɴᴋ ᴀᴄᴄᴇss</b></code>"
+            header = f"🔥 <b><b>ᴘʀᴇᴍɪᴜᴍ ᴇxᴄʟᴜsɪᴠᴇ sᴛᴏʀʏ</b> ({data.get('source', 'audio').upper()})</b>"
+            
+            raw_lbl = data.get('story_name') or data.get('name') or 'Premium Story'
+            item_label = raw_lbl.split("\n")[0].strip() # First line split check
+            desc_text = "🤖 <b>ᴅᴇʟɪᴠᴇʀỹ:</b> <code><b>ɪɴsᴛᴀɴᴛ ʙᴏᴛ ʟɪɴᴋ ᴀᴄᴄᴇss</b></code>"
 
         if data.get('demo_link'):
             inline_markup.append([InlineKeyboardButton("📺 ᴠɪᴇᴡ ǫᴜᴀʟɪᴛʏ ᴅᴇᴍᴏ", url=data['demo_link'])])
             
         inline_markup.append([InlineKeyboardButton("⬅️ BACK TO LIST", callback_data="back_to_store_list")])
 
-        details_layout = f"{header}\n──────────────────────────\n📦 <b><u>ɪᴛᴇᴍ:</u></b> <code>{item_label}</code>\n\n{desc_text}\n──────────────────────────"
+        details_layout = f"{header}\n──────────────────────────\n📦 <b><u>ɪᴛᴇᴍ:</u></b> <code>{item_label}</code>\n💰 <b><u>ᴘʀɪᴄᴇ:</u></b> <b>₹{data.get('price', '49')}</b>\n\n{desc_text}\n──────────────────────────"
         photo_id = data.get('file_id')
-
-        if photo_id:
-            await client.send_photo(message.chat.id, photo=photo_id, caption=details_layout, reply_markup=InlineKeyboardMarkup(inline_markup))
-        else:
-            await client.send_message(message.chat.id, text=details_layout, reply_markup=InlineKeyboardMarkup(inline_markup))
 
         try:
             await loading_alert.delete()
         except:
             pass
+
+        if photo_id:
+            await client.send_photo(message.chat.id, photo=photo_id, caption=details_layout, reply_markup=InlineKeyboardMarkup(inline_markup))
+        else:
+            await client.send_message(message.chat.id, text=details_layout, reply_markup=InlineKeyboardMarkup(inline_markup))
 
 
 # ─── 4. BACK TO LIST INLINE CALLBACK CONTROLLER ───
