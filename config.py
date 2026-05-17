@@ -2,7 +2,6 @@
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-
 import re
 import os
 from os import environ
@@ -23,7 +22,16 @@ API_HASH = environ.get("API_HASH", "")
 BOT_TOKEN = environ.get("BOT_TOKEN", "")
 
 PICS = (environ.get('PICS', 'https://graph.org/file/ce1723991756e48c35aa1.jpg')).split() # Bot Start Picture
+
+# 🌟 ADMINS LIST SETUP (Isme aapki ID list me save hoti hai)
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '5898522531').split()]
+
+# 🌟 BACKWARD COMPATIBILITY: Agar kisi file ko ek single ID chahiye, toh list ka pehla admin nikal lega
+ADMIN_ID = ADMINS[0] if ADMINS else 5898522531
+
+# 🌟 UPI CONFIG: Payment system ke liye UPI variable framework mapping
+UPI_ID = environ.get("UPI_ID", "6398324472@fam") 
+
 BOT_USERNAME = environ.get("BOT_USERNAME", "PremiumstorebyACbot") # without @
 PORT = environ.get("PORT", "8080")
 
@@ -86,4 +94,3 @@ URL = environ.get("URL", "https://testofvjfilter-1fa60b1b8498.herokuapp.com/")
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
-    
