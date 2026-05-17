@@ -322,7 +322,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         reply_markup = InlineKeyboardMarkup(buttons)
         me2 = (await client.get_me()).mention
         await query.message.edit_text(
-            text=script.START_TXT.format(me2),
+            text=script.ABOUT_TXT.format(me2),
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
