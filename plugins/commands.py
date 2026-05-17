@@ -64,7 +64,7 @@ async def start(client, message):
             ]
         ]
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀãᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
             
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
@@ -78,22 +78,23 @@ async def start(client, message):
     # 🌟 IF ARGUMENTS EXIST: Handle Premium Story Links & Verification
     data = message.command[1]
     
-    # --- RULE: INTERCEPT UNIQUE CODES GENERATED FROM STORY CHANNELS ---
+    # --- 🎯 FIXED UNIFIED FLOW INTERCEPTOR ---
     if not data.startswith("verify-") and not data.startswith("BATCH-") and not "_" in data:
-        # Yeh aapka story unique ID hai (Jaise: fbfe7e70-7)
-        # Isko seedhe payment checkout query (`pay_`) forward karenge!
-        from plugins.payment import confirm_step
+        # Yeh aapka unique id hai jo direct channel post se link hokar aaya hai
+        from plugins.store_board import show_story_details_by_id
         
-        # Ek fake CallbackQuery trigger object taiyar kar rahe hain pipeline chalane ke liye
-        fake_callback = CallbackQuery(
-            id=str(random.randint(100000, 999999)),
-            from_user=message.from_user,
-            chat_instance="1",
-            message=message,
-            data=f"pay_{data}",
-            client=client
-        )
-        return await confirm_step(client, fake_callback)
+        # Aapki core structure ke hisab se channels_col collection me ID search karenge
+        story_data = await db.db.channels_col.find_one({"item_id": data}) or \
+                     await db.db.channels_col.find_one({"channel_id": int(data) if data.replace('-','').isdigit() else 0})
+        
+        if not story_data:
+            story_data = await db.db.channels_col.find_one({"combo_name": data})
+
+        if story_data:
+            # 🚀 USER KO DIRECT DETAIL PAGE PAR BHEJO (WITH ✅ CONFIRM BUTTON)
+            return await show_story_details_by_id(client, message.chat.id, story_data)
+        else:
+            return await message.reply_text("❌ <b>Story Details nahi mil saki ya link delete ho gayi hai!</b>")
 
     try:
         pre, file_id = data.split('_', 1)
@@ -187,7 +188,7 @@ async def start(client, message):
                             InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
                             InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                         ],[
-                            InlineKeyboardButton("• ᴡᴀ符ᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                            InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                         ]]
                         reply_markup=InlineKeyboardMarkup(button)
                 else:
@@ -365,7 +366,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
     elif query.data == "open_store":
         await query.answer()
-        # 🌟 SAFE INTEGRATION BLOCK: Ensures missing modules don't cause silent deletions
         try:
             from plugins.store_board import get_platform_markup
             markup = get_platform_markup()
