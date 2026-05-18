@@ -6,6 +6,7 @@ import os
 import logging
 import random
 import asyncio
+import time
 from validators import domain
 from Script import script
 from plugins.dbusers import db
@@ -13,7 +14,7 @@ from pyrogram import Client, filters, enums
 from plugins.users_api import get_user, update_user_info
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
-from utils import verify_user, check_token, check_verification, get_token
+from utils import verify_user, check_token, check_verification, get_token, generate_settings_keyboard 
 from config import *
 import re
 import json
@@ -53,14 +54,17 @@ def formate_file_name(file_name):
 async def start(client, message):
     username = client.me.username
     user_id = message.from_user.id
+    
+    # User database entry registration loop
     if not await db.is_user_exist(user_id):
         await db.add_user(user_id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(user_id, message.from_user.mention))
     
-    # 🌟 NEW: Fetch current settings or apply global config defaults
-    user_settings = SETTINGS.get(user_id, DEFAULT_SETTINGS)
+    # Live MongoDB database configuration loading
+    user_settings = await db.get_user_settings(user_id)
 
-    if len(message.command) != 2:
+    # 🌟 FIXED: HOME PAGE PARSER (Normal /start command ya bina argument wale command par Welcome Photo aur niche ke Buttons aayenge)
+    if len(message.command) != 2 or not message.command[1].strip():
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
             ],[
@@ -73,53 +77,60 @@ async def start(client, message):
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
-        me = client.me
+        
+        # Home page par photo, text aur buttons send karne ke liye
         await message.reply_photo(
             photo=random.choice(PICS),
-            caption=script.START_TXT.format(message.from_user.mention, me.mention),
+            caption=script.START_TXT.format(message.from_user.mention, client.me.mention),
             reply_markup=reply_markup
         )
         return
 
+    # Agar start command ke saath link ka data aaya hai
     data = message.command[1]
     
-    # 1. HANDLE VERIFICATION LINKS
-    if data.split("-", 1)[0] == "verify":
-        userid = data.split("-", 1)[1].split("-", 1)[0] if "-" in data else data.split("-", 1)[1]
+    # 🌟 FIXED: VERIFICATION LINK PROCESSING LAYER
+    if data.startswith("verify-"):
         try:
-            token = data.split("-", 2)[2]
+            parts = data.split("-")
+            userid = parts[1]
+            token = parts[2]
+            original_file_payload = parts[3] if len(parts) > 3 else ""
         except IndexError:
-            token = "DIRECT_TOKEN"
+            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
 
         if str(user_id) != str(userid):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         
-        # Check token logic or bypass if direct token
         if token == "DIRECT_TOKEN" or await check_token(client, userid, token):
             await verify_user(client, userid, token)
-            try:
-                await message.reply_text(
-                    text=script.VERIFIED_SUCCESS_TEXT.format(message.from_user.mention),
-                    protect_content=True
-                )
-            except Exception as msg_err:
-                logger.error(f"Error sending verified text: {msg_err}")
+            await message.reply_text(
+                text=script.VERIFIED_SUCCESS_TEXT.format(message.from_user.mention),
+                protect_content=True
+            )
+            
+            # Verification safal hone par agar original file ka link backup hai, toh automatic file de dega
+            if original_file_payload:
+                message.command = ["start", original_file_payload]
+                return await start(client, message)
+            else:
+                # Agar koi file data nahi hai, toh automatic Home Page par redirect karega
+                message.command = ["start"]
+                return await start(client, message)
         else:
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         return
 
-    # 2. HANDLE BATCH LINKS
-    elif data.split("-", 1)[0] == "BATCH":
+    # 🌟 FIXED: BATCH LINKS PROCESSING LAYER
+    elif data.startswith("BATCH-"):
         try:
-            # 🌟 UPDATED: Dynamic validation based on dashboard button toggles
             if user_settings.get("token_verification", VERIFY_MODE):
                 if not await check_verification(client, user_id):
                     
-                    # Dashboard settings ke shortener button check status
                     if user_settings.get("link_shortener", False):
-                        verify_url = await get_token(client, user_id, f"https://telegram.me/{username}?start=")
+                        verify_url = await get_token(client, user_id, username, data)
                     else:
-                        verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN"
+                        verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN-{data}"
 
                     not_verified_buttons = [
                         [InlineKeyboardButton("🚀 CLICK HERE TO VERIFY", url=verify_url)],
@@ -181,14 +192,13 @@ async def start(client, message):
                     
                     size = get_size(int(file.file_size)) if hasattr(file, "file_size") else "Unknown"
                     
-                    # 🌟 UPDATED: Render caption dynamic checking as per dashboard configuration
                     if user_settings.get("custom_caption", True) and BATCH_FILE_CAPTION:
                         try:
                             f_caption = BATCH_FILE_CAPTION.format(file_name='' if title is None else title, file_size='' if size is None else size, file_caption='' if f_caption is None else f_caption)
                         except:
                             f_caption = f_caption
                     elif not user_settings.get("custom_caption", True):
-                        f_caption = "" # Clear custom framing if button is toggled off
+                        f_caption = ""
                         
                     if f_caption is None:
                         f_caption = f"@VJ_Bots {title}"
@@ -206,7 +216,6 @@ async def start(client, message):
                     else:
                         reply_markup = None
                     
-                    # 🌟 UPDATED: Content forwarding security maps toggles status layer
                     is_protected = user_settings.get("protect_content", False)
                     msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=is_protected, reply_markup=reply_markup)
                 else:
@@ -237,15 +246,14 @@ async def start(client, message):
             await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
         return
 
-    # 3. HANDLE SINGLE FILE / PHOTO LINKS
+    # 🌟 FIXED: SINGLE FILE / PHOTO LINKS PROCESSING LAYER
     if user_settings.get("token_verification", VERIFY_MODE):
         if not await check_verification(client, user_id):
             
-            # Dashboard system dynamic link generation parsing router
             if user_settings.get("link_shortener", False):
-                verify_url = await get_token(client, user_id, f"https://telegram.me/{username}?start=")
+                verify_url = await get_token(client, user_id, username, data)
             else:
-                verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN"
+                verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN-{data}"
 
             not_verified_buttons = [
                 [InlineKeyboardButton("🚀 CLICK HERE TO VERIFY", url=verify_url)],
@@ -278,7 +286,6 @@ async def start(client, message):
             
             f_caption = f"@VJ_Bots <code>{title}</code>"
             
-            # 🌟 UPDATED: Render custom structures layer checking 
             if user_settings.get("custom_caption", True) and CUSTOM_FILE_CAPTION:
                 try:
                     f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
@@ -320,6 +327,21 @@ async def start(client, message):
         logger.error(f"Error in single file delivery: {str(e)}")
         pass
 
+# ─── DIRECT /settings COMMAND HANDLER ───
+@Client.on_message(filters.command("settings") & filters.private)
+async def open_settings(client, message):
+    user_id = message.from_user.id
+    user_settings = await db.get_user_settings(user_id)
+    
+    text = (
+        "╔════════════════════════╗\n"
+        "🎬   **VENOM FILE STORE BOT**\n"
+        "╚════════════════════════╝\n\n"
+        "⚙️ **HERE IS THE SETTINGS MENU**\n"
+        "Customize your settings as per your need."
+    )
+    await message.reply_text(text, reply_markup=generate_settings_keyboard(user_settings))
+
 # ─── DIRECT /plan COMMAND HANDLER ───
 @Client.on_message(filters.command(['plan']) & filters.private)
 async def premium_plan_cmd(bot, message):
@@ -338,40 +360,6 @@ async def premium_plan_cmd(bot, message):
         reply_markup=InlineKeyboardMarkup(plan_buttons)
     )
 
-@Client.on_message(filters.command('api') & filters.private)
-async def shortener_api_handler(client, m: Message):
-    user_id = m.from_user.id
-    user = await get_user(user_id)
-    cmd = m.command
-
-    if len(cmd) == 1:
-        s = script.SHORTENER_API_MESSAGE.format(base_site=user["base_site"], shortener_api=user["shortener_api"])
-        return await m.reply(s)
-
-    elif len(cmd) == 2:    
-        api = cmd[1].strip()
-        await update_user_info(user_id, {"shortener_api": api})
-        await m.reply("<b>Shortener API updated successfully to</b> " + api)
-
-@Client.on_message(filters.command("base_site") & filters.private)
-async def base_site_handler(client, m: Message):
-    user_id = m.from_user.id
-    user = await get_user(user_id)
-    cmd = m.command
-    text = f"`/base_site (base_site)`\n\n<b>Current base site: None\n\n EX:</b> `/base_site shortnerdomain.com`\n\nIf You Want To Remove Base Site Then Copy This And Send To Bot - `/base_site None`"
-    if len(cmd) == 1:
-        return await m.reply(text=text, disable_web_page_preview=True)
-    elif len(cmd) == 2:
-        base_site = cmd[1].strip()
-        if base_site == "None" or base_site == None:
-            await update_user_info(user_id, {"base_site": None})
-            return await m.reply("<b>Base Site updated successfully</b>")
-            
-        if not domain(base_site):
-            return await m.reply(text=text, disable_web_page_preview=True)
-        await update_user_info(user_id, {"base_site": base_site})
-        await m.reply("<b>Base Site updated successfully</b>")
-
 
 # ==========================================
 #         📡 CALLBACKS EXECUTION HUB
@@ -379,9 +367,26 @@ async def base_site_handler(client, m: Message):
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    
-    # 🌟 CALLBACK: "BUY PREMIUM" BUTTON CLICK FROM NOT VERIFIED BOX
-    if query.data == "open_premium_plans":
+    user_id = query.from_user.id
+
+    if query.data.startswith("toggle_"):
+        setting_key = query.data.replace("toggle_", "")
+        current_settings = await db.get_user_settings(user_id)
+        
+        new_value = not current_settings.get(setting_key, False)
+        await db.update_user_setting(user_id, setting_key, new_value)
+        current_settings[setting_key] = new_value
+        
+        status_str = "ENABLED ✅" if new_value else "DISABLED ❌"
+        clean_name = setting_key.replace('_', ' ').title()
+        await query.answer(f"{clean_name} is now {status_str}", show_alert=False)
+        
+        await query.message.edit_reply_markup(
+            reply_markup=generate_settings_keyboard(current_settings)
+        )
+        return
+        
+    elif query.data == "open_premium_plans":
         await query.answer("Opening Premium Plans... 📥")
         plan_buttons = [
             [
@@ -398,7 +403,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=InlineKeyboardMarkup(plan_buttons)
         )
         
-    # 🌟 CALLBACK: QR SELECTION LAYER
     elif query.data == "pay_via_qr":
         await query.answer("Loading QR Code... 🖼️")
         qr_buttons = [
@@ -411,7 +415,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=InlineKeyboardMarkup(qr_buttons)
         )
         
-    # 🌟 CALLBACK: UPI SELECTION LAYER
     elif query.data == "pay_via_upi":
         await query.answer("Loading UPI Details... 💳")
         upi_buttons = [
@@ -451,7 +454,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
             parse_mode=enums.ParseMode.HTML
         )
     
-    elif query.data == "start":
+    # 🌟 CALLBACK HANDLER: `start` aur `back_to_main` dono par Home page reset hoga photo aur text ke sath
+    elif query.data in ["start", "back_to_main"]:
         await query.answer()
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
@@ -496,7 +500,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
         except Exception as e:
             logger.error(f"Media edit error: {e}")
 
-    
     elif query.data == "help":
         await query.answer()
         buttons = [[
