@@ -12,22 +12,20 @@ from config import ADMIN  # Config se ADMIN ID import ki global control ke liye
 async def open_settings(client, message):
     user_id = message.from_user.id
     
-    # 🌟 ADMIN SECURITY CHECK: Agar koi normal user command chalayega toh block ho jayega
+    # 🌟 ADMIN SECURITY CHECK: Normal user settings open nahi kar payega
     if user_id != ADMIN:
         return await message.reply_text(
             text="<b>❌ ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ!\n\nYeh settings menu sirf Bot Owner/Admin ke liye hai. Aap isme badlaav nahi kar sakte.</b>",
             protect_content=True
         )
     
-    # Live fetch database global settings state (Ab Admin ID pass ho rahi hai)
+    # Central database se hamesha Global settings fetch hogi
     user_settings = await db.get_user_settings(ADMIN)
     
+    # Venom wala duplicate design yahan se saaf kar diya hai
     text = (
-        "╔════════════════════════╗\n"
-        "🎬   **VENOM FILE STORE GLOBAL SETTINGS**\n"
-        "╚════════════════════════╝\n\n"
-        "⚙️ **WELCOME ADMIN!**\n"
-        "Yahan se aap jo bhi change karenge, wo poore bot ke sabhi users par automatic apply hoga."
+        "⚙️ **WELCOME TO GLOBAL CONTROL PANEL**\n\n"
+        "Yahan se aap jo bhi toggle change karenge, wo instantly poore bot ke sabhi users par apply ho jayega."
     )
     await message.reply_text(text, reply_markup=generate_settings_keyboard(user_settings))
 
@@ -36,7 +34,7 @@ async def open_settings(client, message):
 async def toggle_settings_callback(client, callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
     
-    # 🌟 BUTTON SECURITY LAYER: Agar koi chalak user callback data capture karke hit karega toh block hoga
+    # 🌟 BUTTON SECURITY LAYER: Koi user hacker banne ki koshish kare toh block ho
     if user_id != ADMIN:
         return await callback_query.answer(
             text="❌ Warning: Aapke paas is setting ko badalane ki permission nahi hai!", 
@@ -48,7 +46,7 @@ async def toggle_settings_callback(client, callback_query: CallbackQuery):
     # 1. Database se Global settings fetch karein (ADMIN context)
     current_settings = await db.get_user_settings(ADMIN)
     
-    # 2. Toggle state logic
+    # 2. Toggle state inversion logic
     new_value = not current_settings.get(setting_key, False)
     
     # 3. MongoDB permanent global collection update
