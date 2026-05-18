@@ -11,7 +11,6 @@ from validators import domain
 from Script import script
 from plugins.dbusers import db
 from pyrogram import Client, filters, enums
-from plugins.users_api import get_user, update_user_info
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
 from utils import verify_user, check_token, check_verification, get_token, generate_settings_keyboard 
@@ -45,6 +44,27 @@ def formate_file_name(file_name):
     file_name = '@VJ_Botz ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
+# 🌟 HELPER FUNCTION: Home Page bhejne ke liye common function banaya taaki kahin bhi error aaye toh direct Home Page khule
+async def send_home_page(client, message):
+    buttons = [[
+        InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
+        ],[
+        InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
+        InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
+        ],[
+        InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
+        InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
+    ]]
+    if CLONE_MODE == True:
+        buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+    reply_markup = InlineKeyboardMarkup(buttons)
+    
+    await message.reply_photo(
+        photo=random.choice(PICS),
+        caption=script.START_TXT.format(message.from_user.mention, client.me.mention),
+        reply_markup=reply_markup
+    )
+
 
 # ==========================================
 #            📡 HANDLERS PIPELINE
@@ -59,31 +79,16 @@ async def start(client, message):
         await db.add_user(user_id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(user_id, message.from_user.mention))
     
-    # 🌟 FIXED: Ab bot individual user ki setting nahi, balki ADMIN ki global setting check karega sabhi users ke liye
+    # Central Admin Global Config Fetch
     user_settings = await db.get_user_settings(ADMIN)
 
-    if len(message.command) != 2 or not message.command[1].strip():
-        buttons = [[
-            InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
-            ],[
-            InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
-            ],[
-            InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
-        ]]
-        if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
-        reply_markup = InlineKeyboardMarkup(buttons)
-        
-        await message.reply_photo(
-            photo=random.choice(PICS),
-            caption=script.START_TXT.format(message.from_user.mention, client.me.mention),
-            reply_markup=reply_markup
-        )
+    # Pure text ko check karenge, agar sirf /start hai ya koi arguments nahi hain toh seedhe Home Page
+    text_args = message.text.split(" ", 1) if message.text else []
+    if len(text_args) < 2 or not text_args[1].strip():
+        await send_home_page(client, message)
         return
 
-    data = message.command[1]
+    data = text_args[1].strip()
     
     # 1. HANDLE VERIFICATION LINKS
     if data.startswith("verify-"):
@@ -93,10 +98,14 @@ async def start(client, message):
             token = parts[2]
             original_file_payload = parts[3] if len(parts) > 3 else ""
         except IndexError:
-            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
+            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting...</b>", protect_content=True)
+            await send_home_page(client, message)
+            return
 
         if str(user_id) != str(userid):
-            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
+            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting...</b>", protect_content=True)
+            await send_home_page(client, message)
+            return
         
         if token == "DIRECT_TOKEN" or await check_token(client, userid, token):
             await verify_user(client, userid, token)
@@ -105,20 +114,22 @@ async def start(client, message):
                 protect_content=True
             )
             
+            # 🌟 FIXED: Agar file data backup bacha hai, toh message text override karke bot flow ko direct file par bhejenge
             if original_file_payload:
-                message.command = ["start", original_file_payload]
+                message.text = f"/start {original_file_payload}"
                 return await start(client, message)
             else:
-                message.command = ["start"]
-                return await start(client, message)
+                # Agar koi file token nahi tha, toh direct Home page send hoga bina rukne ke loop ke
+                await send_home_page(client, message)
+                return
         else:
-            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
-        return
+            await message.reply_text(text="<b>Token Expired or Invalid! Redirecting to Home...</b>", protect_content=True)
+            await send_home_page(client, message)
+            return
 
     # 2. HANDLE BATCH LINKS
     elif data.startswith("BATCH-"):
         try:
-            # Global settings check
             if user_settings.get("token_verification", VERIFY_MODE):
                 if not await check_verification(client, user_id):
                     
@@ -139,7 +150,9 @@ async def start(client, message):
                     )
                     return
         except Exception as e:
-            return await message.reply_text(f"**Error - {e}**")
+            await message.reply_text(f"**Verification Error - {e}. Redirecting to Home...**")
+            await send_home_page(client, message)
+            return
             
         sts = await message.reply("<b>PLEASE WAIT... ⏳</b>")
         file_id = data.split("-", 1)[1]
@@ -164,7 +177,9 @@ async def start(client, message):
                 BATCH_FILES[file_id] = msgs
             except Exception as e:
                 await sts.edit("<b>FAILED TO FETCH BATCH DATA ❌</b>")
-                return await client.send_message(LOG_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
+                await client.send_message(LOG_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
+                await send_home_page(client, message)
+                return
             
         filesarr = []
         for msg_item in msgs:
@@ -242,88 +257,89 @@ async def start(client, message):
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    if user_settings.get("token_verification", VERIFY_MODE):
-        if not await check_verification(client, user_id):
+    else:
+        if user_settings.get("token_verification", VERIFY_MODE):
+            if not await check_verification(client, user_id):
+                
+                if user_settings.get("link_shortener", False):
+                    verify_url = await get_token(client, user_id, username, data)
+                else:
+                    verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN-{data}"
+
+                not_verified_buttons = [
+                    [InlineKeyboardButton("🚀 CLICK HERE TO VERIFY", url=verify_url)],
+                    [InlineKeyboardButton("👑 BUY PREMIUM / PLANS", callback_data="open_premium_plans")],
+                    [InlineKeyboardButton("❓ HOW TO VERIFY", url=VERIFY_TUTORIAL)]
+                ]
+                await message.reply_text(
+                    text=script.NOT_VERIFIED_TEXT,
+                    protect_content=True,
+                    reply_markup=InlineKeyboardMarkup(not_verified_buttons)
+                )
+                return
+
+        try:
+            decoded_bytes = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
+            decoded_str = decoded_bytes.decode("ascii")
             
-            if user_settings.get("link_shortener", False):
-                verify_url = await get_token(client, user_id, username, data)
+            if "file_" in decoded_str:
+                decode_file_id = decoded_str.replace("file_", "")
             else:
-                verify_url = f"https://telegram.me/{username}?start=verify-{user_id}-DIRECT_TOKEN-{data}"
+                decode_file_id = decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str
+                
+            msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
+            
+            if msg.media:
+                media = getattr(msg, msg.media.value)
+                old_title = media.file_name if hasattr(media, "file_name") else "Photo File"
+                title = formate_file_name(old_title)
+                size = get_size(media.file_size) if hasattr(media, "file_size") else "Unknown"
+                
+                f_caption = f"@VJ_Bots <code>{title}</code>"
+                
+                if user_settings.get("custom_caption", True) and CUSTOM_FILE_CAPTION:
+                    try:
+                        f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
+                    except:
+                        pass
+                elif not user_settings.get("custom_caption", True):
+                    f_caption = ""
 
-            not_verified_buttons = [
-                [InlineKeyboardButton("🚀 CLICK HERE TO VERIFY", url=verify_url)],
-                [InlineKeyboardButton("👑 BUY PREMIUM / PLANS", callback_data="open_premium_plans")],
-                [InlineKeyboardButton("❓ HOW TO VERIFY", url=VERIFY_TUTORIAL)]
-            ]
-            await message.reply_text(
-                text=script.NOT_VERIFIED_TEXT,
-                protect_content=True,
-                reply_markup=InlineKeyboardMarkup(not_verified_buttons)
-            )
-            return
-
-    try:
-        decoded_bytes = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
-        decoded_str = decoded_bytes.decode("ascii")
-        
-        if "file_" in decoded_str:
-            decode_file_id = decoded_str.replace("file_", "")
-        else:
-            decode_file_id = decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str
-            
-        msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
-        
-        if msg.media:
-            media = getattr(msg, msg.media.value)
-            old_title = media.file_name if hasattr(media, "file_name") else "Photo File"
-            title = formate_file_name(old_title)
-            size = get_size(media.file_size) if hasattr(media, "file_size") else "Unknown"
-            
-            f_caption = f"@VJ_Bots <code>{title}</code>"
-            
-            if user_settings.get("custom_caption", True) and CUSTOM_FILE_CAPTION:
+                if STREAM_MODE == True and (msg.video or msg.document):
+                    log_msg = msg
+                    stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                    download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                    button = [[
+                        InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                        InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
+                    ],[
+                        InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    ]]
+                    reply_markup=InlineKeyboardMarkup(button)
+                else:
+                    reply_markup = None
+                    
+                is_protected = user_settings.get("protect_content", False)
+                del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protected)
+            else:
+                is_protected = user_settings.get("protect_content", False)
+                del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protected)
+                
+            if AUTO_DELETE_MODE == True:
+                k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
+                await asyncio.sleep(AUTO_DELETE_TIME)
                 try:
-                    f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
+                    await del_msg.delete()
                 except:
                     pass
-            elif not user_settings.get("custom_caption", True):
-                f_caption = ""
-
-            if STREAM_MODE == True and (msg.video or msg.document):
-                log_msg = msg
-                stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
-                ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
-                ]]
-                reply_markup=InlineKeyboardMarkup(button)
-            else:
-                reply_markup = None
-                
-            is_protected = user_settings.get("protect_content", False)
-            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protected)
-        else:
-            is_protected = user_settings.get("protect_content", False)
-            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protected)
-            
-        if AUTO_DELETE_MODE == True:
-            k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
-            await asyncio.sleep(AUTO_DELETE_TIME)
-            try:
-                await del_msg.delete()
-            except:
-                pass
-            await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
-        return
-    except Exception as e:
-        logger.error(f"Error in single file delivery: {str(e)}")
-        pass
+                await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            return
+        except Exception as e:
+            logger.error(f"Error in single file delivery: {str(e)}")
+            await send_home_page(client, message)
+            return
 
 # ─── DIRECT /settings COMMAND HANDLER ───
-# 🌟 FIXED: Sirf ADMIN hi /settings command use kar payega, normal user bhejega toh block ho jayega
 @Client.on_message(filters.command("settings") & filters.private)
 async def open_settings(client, message):
     user_id = message.from_user.id
@@ -368,7 +384,6 @@ async def premium_plan_cmd(bot, message):
 async def cb_handler(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
 
-    # 🌟 FIXED: Callback toggles ko bhi ADMIN parameter par bind kar diya taaki pure bot ki central setting update ho
     if query.data.startswith("toggle_"):
         if user_id != ADMIN:
             return await query.answer("❌ Aap admin nahi ho! Yeh settings sirf admin badal sakta hai.", show_alert=True)
@@ -462,7 +477,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
         ],[
-            InlineKeyboardButton('🔍 sᴜᴘᴘᴏறᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
+            InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
             InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
