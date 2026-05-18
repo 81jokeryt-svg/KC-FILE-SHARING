@@ -3,7 +3,7 @@
 # Ask Doubt on telegram @KingVJ01
 
 import motor.motor_asyncio
-from config import DB_NAME, DB_URI, DEFAULT_SETTINGS, ADMIN
+from config import DB_NAME, DB_URI, DEFAULT_SETTINGS, ADMINS
 
 class Database:
     
