@@ -44,7 +44,7 @@ def formate_file_name(file_name):
     file_name = '@VJ_Botz ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
-# 🌟 HELPER FUNCTION: Home Page bhejne ke liye common function banaya taaki kahin bhi error aaye toh direct Home Page khule
+# ⚙️ Helper function home page ko safe load karne ke liye
 async def send_home_page(client, message):
     buttons = [[
         InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
@@ -79,10 +79,10 @@ async def start(client, message):
         await db.add_user(user_id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(user_id, message.from_user.mention))
     
-    # Central Admin Global Config Fetch
+    # 🌟 CENTRAL LOGIC: Ab database se user_id nahi, sidhe ADMIN ki setting load hogi global control ke liye
     user_settings = await db.get_user_settings(ADMIN)
 
-    # Pure text ko check karenge, agar sirf /start hai ya koi arguments nahi hain toh seedhe Home Page
+    # Text arguments ko sahi tareeke se parse karenge taaki flow freeze na ho
     text_args = message.text.split(" ", 1) if message.text else []
     if len(text_args) < 2 or not text_args[1].strip():
         await send_home_page(client, message)
@@ -98,12 +98,12 @@ async def start(client, message):
             token = parts[2]
             original_file_payload = parts[3] if len(parts) > 3 else ""
         except IndexError:
-            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting...</b>", protect_content=True)
+            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting to Home...</b>", protect_content=True)
             await send_home_page(client, message)
             return
 
         if str(user_id) != str(userid):
-            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting...</b>", protect_content=True)
+            await message.reply_text(text="<b>Invalid link or Expired link ! Redirecting to Home...</b>", protect_content=True)
             await send_home_page(client, message)
             return
         
@@ -114,12 +114,11 @@ async def start(client, message):
                 protect_content=True
             )
             
-            # 🌟 FIXED: Agar file data backup bacha hai, toh message text override karke bot flow ko direct file par bhejenge
+            # 🌟 FIXED: String overwrite karke recursion chalayenge taaki flow na ruke
             if original_file_payload:
                 message.text = f"/start {original_file_payload}"
                 return await start(client, message)
             else:
-                # Agar koi file token nahi tha, toh direct Home page send hoga bina rukne ke loop ke
                 await send_home_page(client, message)
                 return
         else:
@@ -150,7 +149,7 @@ async def start(client, message):
                     )
                     return
         except Exception as e:
-            await message.reply_text(f"**Verification Error - {e}. Redirecting to Home...**")
+            await message.reply_text(f"**Verification Error - {e}. Redirecting...**")
             await send_home_page(client, message)
             return
             
@@ -340,6 +339,7 @@ async def start(client, message):
             return
 
 # ─── DIRECT /settings COMMAND HANDLER ───
+# 🌟 FIXED: Sirf ADMIN hi global setting access kar sakta hai
 @Client.on_message(filters.command("settings") & filters.private)
 async def open_settings(client, message):
     user_id = message.from_user.id
@@ -384,6 +384,7 @@ async def premium_plan_cmd(bot, message):
 async def cb_handler(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
 
+    # 🌟 FIXED: Toggles ab hamesha ADMIN panel par target karenge
     if query.data.startswith("toggle_"):
         if user_id != ADMIN:
             return await query.answer("❌ Aap admin nahi ho! Yeh settings sirf admin badal sakta hai.", show_alert=True)
@@ -472,6 +473,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             parse_mode=enums.ParseMode.HTML
         )
     
+    # 🌟 CALLBACK HANDLER: `start` aur `back_to_main` dono par photo ke sath home page reset hoga
     elif query.data in ["start", "back_to_main"]:
         await query.answer()
         buttons = [[
