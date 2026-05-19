@@ -12,7 +12,7 @@ from plugins.users_api import get_user, get_short_link
 # Users ki dynamic state track karne ke liye dictionaries
 AWAITING_CONTENT = {}
 BATCH_STATE = {}         # Channel Batch: {user_id: {"step": 1, "first_chat": ..., "first_msg": ...}}
-CUSTOM_BATCH_STATE = {}  # 🌟 FIXED STRUCTURE: {user_id: {"msg_ids": [], "control_messages": []}}
+CUSTOM_BATCH_DATA = {}  # 🌟 FIXED STRUCTURE: {user_id: {"msg_ids": [], "control_messages": []}}
 
 async def allowed(_, __, message):
     if PUBLIC_FILE_STORE:
@@ -21,32 +21,71 @@ async def allowed(_, __, message):
         return True
     return False
 
-# Telegram link regex pattern
-LINK_REGEX = re.compile("(https://)?(t\.me/|telegram\.me/|telegram\.dog/)(c/)?(\d+|[a-zA-Z_0-9]+)/(\d+)$")
-
-def extract_msg_info(message):
-    """Message link ya forwarded message se chat_id aur msg_id nikalne ke liye helper function"""
-    if message.text:
-        match = LINK_REGEX.match(message.text.strip())
-        if match:
-            chat_id = match.group(4)
-            msg_id = int(match.group(5))
-            if chat_id.isnumeric():
-                chat_id = int(("-100" + chat_id))
-            return chat_id, msg_id
-            
-    if message.forward_from_chat:
-        return message.forward_from_chat.id, message.forward_from_message_id
-        
-    return None, None
-
-def get_custom_batch_keyboard():
-    """Custom batch inline buttons"""
+def get_share_button(link):
+    share_text = "Get your files here! 👇"
+    encoded_text = share_text.replace(" ", "%20")
+    share_url = f"https://telegram.me/share/url?url={link}&text={encoded_text}"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⏸️ PAUSE", callback_data="c_batch_pause")],
-        [InlineKeyboardButton("🔗 GENERATE LINK", callback_data="c_batch_generate")],
-        [InlineKeyboardButton("❌ CANCEL BATCH", callback_data="c_batch_cancel")]
+        [InlineKeyboardButton("📤 SHARE URL 📤", url=share_url)]
     ])
+
+# Helper function for Custom Batch Inline Control Panel
+def get_custom_batch_panel():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("PAUSE", callback_data="cb_pause")],
+        [InlineKeyboardButton("GENERATE LINK", callback_data="cb_generate")],
+        [InlineKeyboardButton("CANCEL BATCH", callback_data="cb_cancel")]
+    ])
+
+# ==================== MESSAGE HANDLER (FOR MEDIA & CUSTOM BATCH) ====================
+
+@Client.on_message(filters.private & filters.create(allowed))
+async def handle_incoming_messages(bot, message):
+    user_id = message.from_user.id
+    username = (await bot.get_me()).username
+    
+    # 1. Check if user is currently creating a custom batch
+    if user_id in CUSTOM_BATCH_DATA:
+        if message.text and message.text.startswith("/"):
+            return
+            
+        try:
+            post = await message.copy(LOG_CHANNEL)
+            CUSTOM_BATCH_DATA[user_id].append(post.id)
+            
+            msg_count = len(CUSTOM_BATCH_DATA[user_id])
+            text = (
+                f"<b>Stored Message - {msg_count}</b>\n\n"
+                f"<b>Want To Store More ? Just Send It Now.</b>"
+            )
+            await message.reply(text, reply_markup=get_custom_batch_panel())
+        except Exception as e:
+            await message.reply(f"Error storing message: {e}")
+        return
+
+    # 2. Process as standard single file generation (Direct File Share)
+    if message.document or message.video or message.audio:
+        processing_msg = await message.reply("⏳ PROCESSING... 🚀")
+        post = await message.copy(LOG_CHANNEL)
+        file_id = str(post.id)
+        string = 'file_' + file_id
+        outstr = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
+        user = await get_user(user_id)
+        
+        if WEBSITE_URL_MODE == True:
+            share_link = f"{WEBSITE_URL}?Tech_VJ={outstr}"
+        else:
+            share_link = f"https://t.me/{username}?start={outstr}"
+            
+        if user["base_site"] and user["shortener_api"] != None:
+            short_link = await get_short_link(user, share_link)
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {short_link}</b>"
+            await processing_msg.edit(text, reply_markup=get_share_button(short_link))
+        else:
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {share_link}</b>"
+            await processing_msg.edit(text, reply_markup=get_share_button(share_link))
+
+
 
 
 # 🛠️ 1. INTERCEPT HANDLER (Sabhi states ko handle karne ke liye sabse upar)
