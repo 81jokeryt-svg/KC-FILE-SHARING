@@ -16,6 +16,7 @@ class Database:
         return dict(
             id = id,
             name = name,
+            verify_time = 0 # 🌟 NEW: Default verification time initialized to 0
         )
     
     async def add_user(self, id, name):
@@ -36,5 +37,20 @@ class Database:
     async def delete_user(self, user_id):
         await self.col.delete_many({'id': int(user_id)})
 
+    # 🌟 NEW: User ka verification time database me permanently update karne ke liye
+    async def update_verify_time(self, user_id, verify_time):
+        await self.col.update_one(
+            {'id': int(user_id)},
+            {'$set': {'verify_time': verify_time}},
+            upsert=True
+        )
+
+    # 🌟 NEW: User ka saved verification time database se fetch karne ke liye
+    async def get_verify_time(self, user_id):
+        user = await self.col.find_one({'id': int(user_id)})
+        return user.get('verify_time', 0) if user else 0
+
 
 db = Database(DB_URI, DB_NAME)
+
+# dbusers.py
