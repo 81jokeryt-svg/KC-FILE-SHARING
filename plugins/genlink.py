@@ -1,6 +1,3 @@
-# Don't Remove Credit @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
-# Ask Doubt on telegram @KingVJ01
 
 import re
 import os
@@ -15,7 +12,7 @@ from plugins.users_api import get_user, get_short_link
 # Users ki dynamic state track karne ke liye dictionaries
 AWAITING_CONTENT = {}
 BATCH_STATE = {}         # Channel Batch: {user_id: {"step": 1, "first_chat": ..., "first_msg": ...}}
-CUSTOM_BATCH_STATE = {}  # 🌟 FIXED STRUCTURE: {user_id: {"msg_ids": [1, 2...], "last_msg_obj": Message}}
+CUSTOM_BATCH_STATE = {}  # 🌟 FIXED STRUCTURE: {user_id: {"msg_ids": [], "control_messages": []}}
 
 async def allowed(_, __, message):
     if PUBLIC_FILE_STORE:
@@ -76,7 +73,7 @@ async def handle_conversations(bot, message):
                 short_link = await get_short_link(user, share_link)
                 response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🖇️ sʜᴏʀᴛ ʟɪɴᴋ :- {short_link}</b>"
             else:
-                response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🔗 ᴏʀɪɢɪɴᴀ ลิɴᴋ :- {share_link}</b>"
+                response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🔗 ᴏʀɪɢɪɴᴀʟ ʟɪɴᴋ :- {share_link}</b>"
             
             await processing_msg.delete()
             await message.reply(response_text)
@@ -170,10 +167,11 @@ async def handle_conversations(bot, message):
     # ─── CASE C: CUSTOM ONE-BY-ONE BATCH WAITING STATE ───
     elif user_id in CUSTOM_BATCH_STATE:
         try:
-            # 🌟 FIX: Agar pichla control message exist karta hai, toh uske buttons remove karo
-            if CUSTOM_BATCH_STATE[user_id]["last_msg_obj"]:
+            # 🌟 FIXED: Pichla text + button ka control message screen se delete karo
+            if "control_messages" in CUSTOM_BATCH_STATE[user_id] and CUSTOM_BATCH_STATE[user_id]["control_messages"]:
+                last_msg_obj = CUSTOM_BATCH_STATE[user_id]["control_messages"][-1]
                 try:
-                    await CUSTOM_BATCH_STATE[user_id]["last_msg_obj"].edit_reply_markup(reply_markup=None)
+                    await last_msg_obj.delete()
                 except Exception:
                     pass
             
@@ -181,15 +179,19 @@ async def handle_conversations(bot, message):
             post = await message.copy(LOG_CHANNEL)
             await processing_msg.delete()
             
-            # Message ID list me add karna
+            # File ID list me store karna
             CUSTOM_BATCH_STATE[user_id]["msg_ids"].append(post.id)
             current_count = len(CUSTOM_BATCH_STATE[user_id]["msg_ids"])
             
             text = f"📦 **Stored Message - {current_count}**\n\nWant To Store More ? Just Send It Now."
             
-            # 🌟 FIX: Naya message send karke use track rakhne ke liye save karna
+            # Naya message control buttons ke sath send karna
             control_msg = await message.reply_text(text, reply_markup=get_custom_batch_keyboard())
-            CUSTOM_BATCH_STATE[user_id]["last_msg_obj"] = control_msg
+            
+            # Is naye message object ko record list me save kar lo delete karne ke liye
+            if "control_messages" not in CUSTOM_BATCH_STATE[user_id]:
+                CUSTOM_BATCH_STATE[user_id]["control_messages"] = []
+            CUSTOM_BATCH_STATE[user_id]["control_messages"].append(control_msg)
             
         except Exception as e:
             await message.reply_text(f"❌ **Error while storing:** {str(e)}")
@@ -255,8 +257,8 @@ async def gen_custom_batch_start(bot, message):
     if user_id in AWAITING_CONTENT: AWAITING_CONTENT[user_id] = False
     if user_id in BATCH_STATE: del BATCH_STATE[user_id]
     
-    # 🌟 FIX: Structure ko dict kiya taaki list aur control message dono save ho sakein
-    CUSTOM_BATCH_STATE[user_id] = {"msg_ids": [], "last_msg_obj": None}
+    # Empty structures ke sath state define karein
+    CUSTOM_BATCH_STATE[user_id] = {"msg_ids": [], "control_messages": []}
     await message.reply_text("📥 **SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE**")
 
 
@@ -271,14 +273,24 @@ async def handle_custom_batch_buttons(bot, callback_query):
         await callback_query.answer("Koi active batch session nahi mila.", show_alert=True)
         return
 
+    # 🔗 GENERATE LINK CLICKED
     if data == "c_batch_generate":
-        # 🌟 FIX: Dict me se msg_ids nikalna
-        msg_ids = CUSTOM_BATCH_STATE[user_id]["msg_ids"]
+        msg_ids = CUSTOM_BATCH_STATE[user_id].get("msg_ids", [])
+        control_msgs = CUSTOM_BATCH_STATE[user_id].get("control_messages", [])
+        
         if not msg_ids:
             await callback_query.answer("Pehle kuch messages toh bhejo!", show_alert=True)
             return
             
-        await callback_query.message.edit_text("🚀 **GENERATING LINK...**")
+        # 🌟 FIXED: Pure pichle text messages ko loop chala kar screen se saaf karo
+        for msg in control_msgs:
+            try:
+                await msg.delete()
+            except Exception:
+                pass
+                
+        # Naya dynamic status message send karenge
+        sts_msg = await callback_query.message.reply_text("🚀 **%s**" % "GENERATING LINK...")
         
         outlist = []
         for m_id in msg_ids:
@@ -291,6 +303,7 @@ async def handle_custom_batch_buttons(bot, callback_query):
         post = await bot.send_document(LOG_CHANNEL, file_name, file_name="Batch.json", caption="⚠️ Custom Batch Generated.")
         os.remove(file_name)
         
+        # State clear karna
         del CUSTOM_BATCH_STATE[user_id]
         
         string = str(post.id)
@@ -303,15 +316,26 @@ async def handle_custom_batch_buttons(bot, callback_query):
             short_link = await get_short_link(user, share_link)
             response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\nContains `{len(msg_ids)}` files.\n\n🖇️ sʜᴏʀᴛ ʟɪɴᴋ :- {short_link}</b>"
         else:
-            response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\nContains `{len(msg_ids)}` files.\n\n🔗 ᴏʀɪɢɪɴᴀʟ ʟɪɴᴋ :- {share_link}</b>"
+            response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\nContains `{len(msg_ids)}` files.\n\n🔗 ᴏʀɪɢɪɴᴀ ʟɪɴᴋ :- {share_link}</b>"
             
         keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("📤 SHARE URL", url=f"https://t.me/share/url?url={share_link}")]])
-        await callback_query.message.edit_text(response_text, reply_markup=keyboard, disable_web_page_preview=True)
+        
+        # 'Generating...' text message ko change karke final link de do
+        await sts_msg.edit_text(response_text, reply_markup=keyboard, disable_web_page_preview=True)
 
+    # ❌ CANCEL BATCH CLICKED
     elif data == "c_batch_cancel":
+        control_msgs = CUSTOM_BATCH_STATE[user_id].get("control_messages", [])
+        for msg in control_msgs:
+            try:
+                await msg.delete()
+            except Exception:
+                pass
+                
         del CUSTOM_BATCH_STATE[user_id]
-        await callback_query.message.edit_text("❌ **Batch generation cancelled successfully.**")
+        await callback_query.message.reply_text("❌ **Batch generation cancelled successfully.**")
         await callback_query.answer()
         
+    # ⏸️ PAUSE BATCH CLICKED
     elif data == "c_batch_pause":
         await callback_query.answer("Batch paused! Aap jab chahein tab messages bhej sakte hain.", show_alert=True)
