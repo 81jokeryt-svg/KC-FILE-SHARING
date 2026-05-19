@@ -15,7 +15,7 @@ from plugins.users_api import get_user, get_short_link
 # Users ki dynamic state track karne ke liye dictionaries
 AWAITING_CONTENT = {}
 BATCH_STATE = {}         # Channel Batch: {user_id: {"step": 1, "first_chat": ..., "first_msg": ...}}
-CUSTOM_BATCH_STATE = {}  # Custom Batch: {user_id: [msg_id1, msg_id2, ...]}
+CUSTOM_BATCH_STATE = {}  # 🌟 FIXED STRUCTURE: {user_id: {"msg_ids": [1, 2...], "last_msg_obj": Message}}
 
 async def allowed(_, __, message):
     if PUBLIC_FILE_STORE:
@@ -76,7 +76,7 @@ async def handle_conversations(bot, message):
                 short_link = await get_short_link(user, share_link)
                 response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🖇️ sʜᴏʀᴛ ʟɪɴᴋ :- {short_link}</b>"
             else:
-                response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🔗 ᴏʀɪɢɪɴᴀʟ ʟɪɴᴋ :- {share_link}</b>"
+                response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\n🔗 ᴏʀɪɢɪɴᴀ ลิɴᴋ :- {share_link}</b>"
             
             await processing_msg.delete()
             await message.reply(response_text)
@@ -170,15 +170,27 @@ async def handle_conversations(bot, message):
     # ─── CASE C: CUSTOM ONE-BY-ONE BATCH WAITING STATE ───
     elif user_id in CUSTOM_BATCH_STATE:
         try:
+            # 🌟 FIX: Agar pichla control message exist karta hai, toh uske buttons remove karo
+            if CUSTOM_BATCH_STATE[user_id]["last_msg_obj"]:
+                try:
+                    await CUSTOM_BATCH_STATE[user_id]["last_msg_obj"].edit_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+            
             processing_msg = await message.reply_text("<b>PROCESSING... ⏳</b>")
             post = await message.copy(LOG_CHANNEL)
             await processing_msg.delete()
             
-            CUSTOM_BATCH_STATE[user_id].append(post.id)
-            current_count = len(CUSTOM_BATCH_STATE[user_id])
+            # Message ID list me add karna
+            CUSTOM_BATCH_STATE[user_id]["msg_ids"].append(post.id)
+            current_count = len(CUSTOM_BATCH_STATE[user_id]["msg_ids"])
             
             text = f"📦 **Stored Message - {current_count}**\n\nWant To Store More ? Just Send It Now."
-            await message.reply_text(text, reply_markup=get_custom_batch_keyboard())
+            
+            # 🌟 FIX: Naya message send karke use track rakhne ke liye save karna
+            control_msg = await message.reply_text(text, reply_markup=get_custom_batch_keyboard())
+            CUSTOM_BATCH_STATE[user_id]["last_msg_obj"] = control_msg
+            
         except Exception as e:
             await message.reply_text(f"❌ **Error while storing:** {str(e)}")
             
@@ -243,7 +255,8 @@ async def gen_custom_batch_start(bot, message):
     if user_id in AWAITING_CONTENT: AWAITING_CONTENT[user_id] = False
     if user_id in BATCH_STATE: del BATCH_STATE[user_id]
     
-    CUSTOM_BATCH_STATE[user_id] = []
+    # 🌟 FIX: Structure ko dict kiya taaki list aur control message dono save ho sakein
+    CUSTOM_BATCH_STATE[user_id] = {"msg_ids": [], "last_msg_obj": None}
     await message.reply_text("📥 **SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE**")
 
 
@@ -259,14 +272,14 @@ async def handle_custom_batch_buttons(bot, callback_query):
         return
 
     if data == "c_batch_generate":
-        msg_ids = CUSTOM_BATCH_STATE[user_id]
+        # 🌟 FIX: Dict me se msg_ids nikalna
+        msg_ids = CUSTOM_BATCH_STATE[user_id]["msg_ids"]
         if not msg_ids:
             await callback_query.answer("Pehle kuch messages toh bhejo!", show_alert=True)
             return
             
         await callback_query.message.edit_text("🚀 **GENERATING LINK...**")
         
-        # LOG_CHANNEL ko dynamically handle karne ke liye format create karna
         outlist = []
         for m_id in msg_ids:
             outlist.append({"channel_id": LOG_CHANNEL, "msg_id": m_id})
