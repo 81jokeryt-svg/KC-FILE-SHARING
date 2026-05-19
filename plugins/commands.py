@@ -6,21 +6,20 @@ import os
 import logging
 import random
 import asyncio
-import base64
-import json
-import re
 from validators import domain
 from Script import script
 from plugins.dbusers import db
 from pyrogram import Client, filters, enums
-from plugins.users_api import get_user, update_user_info, get_short_link
+from plugins.users_api import get_user, update_user_info
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
 from utils import verify_user, check_token, check_verification, get_token
 from config import *
+import re
+import json
+import base64
 from urllib.parse import quote_plus
 from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
-
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
@@ -51,16 +50,12 @@ async def start(client, message):
         await db.add_user(message.from_user.id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
     
-    # Live Settings DB se fetch karna
-    bot_settings = await db.get_bot_settings()
-    is_verify_on = bot_settings.get("verify_mode", VERIFY_MODE)
-
     if len(message.command) != 2:
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
             ],[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
-            InlineKeyboardButton('🤖 覆ᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
             ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
@@ -69,7 +64,6 @@ async def start(client, message):
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
-        
         await message.reply_photo(
             photo=random.choice(PICS),
             caption=script.START_TXT.format(message.from_user.mention, me.mention),
@@ -99,13 +93,11 @@ async def start(client, message):
     # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
-            if not await check_verification(client, message.from_user.id) and is_verify_on == True:
-                # Dynamic verification tutorial details
-                v_tutorial = bot_settings.get("verify_tutorial", VERIFY_TUTORIAL)
+            if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
                 btn = [[
                     InlineKeyboardButton("Verify", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start="))
                 ],[
-                    InlineKeyboardButton("How To Open Link & Verify", url=v_tutorial)
+                    InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
                 ]]
                 await message.reply_text(
                     text="<b>You are not verified !\nKindly verify to continue !</b>",
@@ -144,6 +136,7 @@ async def start(client, message):
         filesarr = []
         for msg_item in msgs:
             try:
+                # 🛠️ SAFE TYPE-CASTING LOGIC FOR MIXED CHANNELS/LOGS
                 raw_channel_id = msg_item.get("channel_id")
                 if isinstance(raw_channel_id, str) and (raw_channel_id.startswith("-100") or raw_channel_id.isdigit()):
                     channel_id = int(raw_channel_id)
@@ -174,8 +167,7 @@ async def start(client, message):
                     if f_caption is None:
                         f_caption = f"@VJ_Bots {title}"
                         
-                    is_stream_on = bot_settings.get("stream_mode", STREAM_MODE)
-                    if is_stream_on == True and (info.video or info.document):
+                    if STREAM_MODE == True and (info.video or info.document):
                         stream = f"{URL}watch/{str(info.id)}/{quote_plus(get_name(info))}?hash={get_hash(info)}"
                         download = f"{URL}{str(info.id)}/{quote_plus(get_name(info))}?hash={get_hash(info)}"
                         button = [[
@@ -187,19 +179,16 @@ async def start(client, message):
                         reply_markup = InlineKeyboardMarkup(button)
                     else:
                         reply_markup = None
-                    
-                    is_protect_on = bot_settings.get("protect_content", False)
-                    msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=is_protect_on, reply_markup=reply_markup)
+                        
+                    msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
                 else:
-                    is_protect_on = bot_settings.get("protect_content", False)
-                    msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect_on)
+                    msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 
                 filesarr.append(msg_out)
                 await asyncio.sleep(1)
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                is_protect_on = bot_settings.get("protect_content", False)
-                msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect_on)
+                msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 filesarr.append(msg_out)
             except Exception as e:
                 logger.error(f"Error copying batch sub-file: {e}")
@@ -219,12 +208,11 @@ async def start(client, message):
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    if not await check_verification(client, message.from_user.id) and is_verify_on == True:
-        v_tutorial = bot_settings.get("verify_tutorial", VERIFY_TUTORIAL)
+    if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
         btn = [[
             InlineKeyboardButton("Verify", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start="))
         ],[
-            InlineKeyboardButton("How To Open Link & Verify", url=v_tutorial)
+            InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
         ]]
         await message.reply_text(
             text="<b>You are not verified !\nKindly verify to continue !</b>",
@@ -257,13 +245,12 @@ async def start(client, message):
                 except:
                     pass
             
-            is_stream_on = bot_settings.get("stream_mode", STREAM_MODE)
-            if is_stream_on == True and (msg.video or msg.document):
+            if STREAM_MODE == True and (msg.video or msg.document):
                 log_msg = msg
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ載 •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
@@ -272,11 +259,9 @@ async def start(client, message):
             else:
                 reply_markup = None
                 
-            is_protect_on = bot_settings.get("protect_content", False)
-            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect_on)
+            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
         else:
-            is_protect_on = bot_settings.get("protect_content", False)
-            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protect_on)
+            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
             
         if AUTO_DELETE_MODE == True:
             k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
@@ -325,17 +310,8 @@ async def base_site_handler(client, m: Message):
         await update_user_info(user_id, {"base_site": base_site})
         await m.reply("<b>Base Site updated successfully</b>")
 
-
-# 🛠️ 7. GLOBAL INTERACTIVE CALLBACK HANDLER (FIXED FOR REDIRECTING CONTROLS)
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    data = query.data
-    
-    # 🌟 CRITICAL FIX: Agar query custom batch ya settings ki hai, toh ise yahin stop kar do taaki batch wali file ka main regex handler ise catch kar sake!
-    if data.startswith("c_batch_") or data.startswith("toggle_") or data.startswith("set_") or data.startswith("menu_"):
-        query.continue_propagation()
-        return
-
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "about":
