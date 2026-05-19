@@ -1,3 +1,7 @@
+# Don't Remove Credit @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
+# Ask Doubt on telegram @KingVJ01
+
 import re
 from pyrogram import filters, Client, enums
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -21,7 +25,7 @@ async def allowed(_, __, message):
 
 # Helper function to create share button
 def get_share_button(link):
-    share_text = "Get your batch files here! 👇"
+    share_text = "Get your files here! 👇"
     encoded_text = share_text.replace(" ", "%20")
     share_url = f"https://telegram.me/share/url?url={link}&text={encoded_text}"
     return InlineKeyboardMarkup([
@@ -98,13 +102,16 @@ async def gen_link_s(bot, message):
 
 @Client.on_message(filters.command(['batch']) & filters.create(allowed))
 async def gen_link_batch(bot, message):
-    username = (await bot.get_me()).username
+    bot_info = await bot.get_me()
+    username = bot_info.username
+    
+    # Automatic username logic for instruction message
     if " " not in message.text:
-        return await message.reply("<b>Forward The First Message From Your Batch Channel (With Forward Tag) . Or Give Me First Message Link From Your Batch Channel\n\nNOTE : MAKE SURE THIS  BOT IS ADMIN IN YOUR CHANNEL WITH FULL RIGHT</b>")
+        return await message.reply(f"<b>Forward The First Message From Your Batch Channel (With Forward Tag) . Or Give Me First Message Link From Your Batch Channel\n\nNOTE : MAKE SURE THIS @{username} BOT IS ADMIN IN YOUR CHANNEL WITH FULL RIGHT</b>")
     
     links = message.text.strip().split(" ")
     if len(links) != 3:
-        return await message.reply("<b>Forward The First Message From Your Batch Channel (With Forward Tag) . Or Give Me First Message Link From Your Batch Channel\n\nNOTE : MAKE SURE THIS  BOT IS ADMIN IN YOUR CHANNEL WITH FULL RIGHT</b>")
+        return await message.reply(f"<b>Forward The First Message From Your Batch Channel (With Forward Tag) . Or Give Me First Message Link From Your Batch Channel\n\nNOTE : MAKE SURE THIS @{username} BOT IS ADMIN IN YOUR CHANNEL WITH FULL RIGHT</b>")
     
     cmd, first, last = links
     regex = re.compile("(https://)?(t\.me/|telegram\.me/|telegram\.dog/)(c/)?(\d+|[a-zA-Z_0-9]+)/(\d+)$")
@@ -116,7 +123,10 @@ async def gen_link_batch(bot, message):
     if f_chat_id.isnumeric():
         f_chat_id = int(("-100" + f_chat_id))
 
-
+# Don't Remove Credit Tg - @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
+# Ask Doubt on telegram @KingVJ01
+    
     match = regex.match(last)
     if not match:
         return await message.reply('Invalid link')
@@ -169,6 +179,9 @@ async def gen_link_batch(bot, message):
         og_msg +=1
         outlist.append(file)
 
+# Don't Remove Credit Tg - @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
+# Ask Doubt on telegram @KingVJ01
 
     with open(f"batchmode_{message.from_user.id}.json", "w+") as out:
         json.dump(outlist, out)
@@ -191,4 +204,6 @@ async def gen_link_batch(bot, message):
         text = f"<b>🎁 HERE IS YOUR BATCH LINK :\n\n📦 Total Files : {og_msg}\n\n⚠️ {share_link}</b>"
         await sts.edit(text, reply_markup=get_share_button(share_link))
         
-
+# Don't Remove Credit Tg - @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
+# Ask Doubt on telegram @KingVJ01
