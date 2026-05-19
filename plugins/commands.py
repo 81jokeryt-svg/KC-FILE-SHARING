@@ -10,7 +10,7 @@ from validators import domain
 from Script import script
 from plugins.dbusers import db
 from pyrogram import Client, filters, enums
-from plugins.users_api import get_user, update_user_info
+from plugins.users_api import get_user, update_user_info, get_short_link
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
 from utils import verify_user, check_token, check_verification, get_token
@@ -23,11 +23,16 @@ from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
+# Global dictionary to track active custom batches for users
+CUSTOM_BATCH_DATA = {}
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
+# Helper function to check if user has access
+async def allowed(_, __, message):
+    if PUBLIC_FILE_STORE:
+        return True
+    if message.from_user and message.from_user.id in ADMINS:
+        return True
+    return False
 
 def get_size(size):
     """Get size in readable format"""
@@ -48,9 +53,80 @@ def formate_file_name(file_name):
     file_name = '@VJ_Botz ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+# Helper function to create share button
+def get_share_button(link):
+    share_text = "Get your files here! 👇"
+    encoded_text = share_text.replace(" ", "%20")
+    share_url = f"https://telegram.me/share/url?url={link}&text={encoded_text}"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📤 SHARE URL 📤", url=share_url)]
+    ])
+
+# Helper function for Custom Batch Inline Control Panel
+def get_custom_batch_panel():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("PAUSE", callback_data="cb_pause")],
+        [InlineKeyboardButton("GENERATE LINK", callback_data="cb_generate")],
+        [InlineKeyboardButton("CANCEL BATCH", callback_data="cb_cancel")]
+    ])
+
+# ==================== INTERCEPTOR HANDLER FOR PRIVATE MESSAGES & CUSTOM BATCH ====================
+
+@Client.on_message(filters.private & filters.incoming & ~filters.command(["start", "api", "base_site", "custom_batch", "link", "batch"]))
+async def handle_incoming_private_messages(client, message):
+    user_id = message.from_user.id
+    username = client.me.username
+    
+    if not await db.is_user_exist(user_id):
+        await db.add_user(user_id, message.from_user.first_name)
+        
+    # 1. If user is in active custom batch creation loop
+    if user_id in CUSTOM_BATCH_DATA:
+        try:
+            post = await message.copy(LOG_CHANNEL)
+            CUSTOM_BATCH_DATA[user_id].append(post.id)
+            
+            msg_count = len(CUSTOM_BATCH_DATA[user_id])
+            text = (
+                f"<b>Stored Message - {msg_count}</b>\n\n"
+                f"<b>Want To Store More ? Just Send It Now.</b>"
+            )
+            await message.reply_text(text, reply_markup=get_custom_batch_panel())
+        except Exception as e:
+            await message.reply_text(f"Error storing message: {e}")
+        return
+
+    # 2. Universal Handler (Ab Text/Photo bhejoge toh direct link automatic generate karega)
+    processing_msg = await message.reply_text("⏳ PROCESSING... 🚀")
+    try:
+        post = await message.copy(LOG_CHANNEL)
+        file_id = str(post.id)
+        string = 'file_' + file_id
+        outstr = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
+        user = await get_user(user_id)
+        
+        if WEBSITE_URL_MODE == True:
+            share_link = f"{WEBSITE_URL}?Tech_VJ={outstr}"
+        else:
+            share_link = f"https://t.me/{username}?start={outstr}"
+            
+        if user and user.get("base_site") and user.get("shortener_api") is not None:
+            short_link = await get_short_link(user, share_link)
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {short_link}</b>"
+            await processing_msg.edit_text(text, reply_markup=get_share_button(short_link))
+        else:
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {share_link}</b>"
+            await processing_msg.edit_text(text, reply_markup=get_share_button(share_link))
+    except Exception as e:
+        await processing_msg.edit_text(f"<b>Error processing message: {e}</b>")
+
+# ==================== COMMANDS REGISTRATION ====================
+
+@Client.on_message(filters.command("custom_batch") & filters.private)
+async def start_custom_batch(client, message):
+    user_id = message.from_user.id
+    CUSTOM_BATCH_DATA[user_id] = []
+    await message.reply_text('<b>SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE</b>')
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
@@ -78,7 +154,7 @@ async def start(client, message):
             reply_markup=reply_markup
         )
         return
-
+    
     data = message.command[1]
     try:
         pre, file_id = data.split('_', 1)
@@ -154,13 +230,12 @@ async def start(client, message):
             msgid = msg.get("msg_id")
             info = await client.get_messages(channel_id, int(msgid))
             
-            # Universal Copy Handler (Text/Photo/Video fix)
             if info.media:
                 file_type = info.media
                 file = getattr(info, file_type.value, None)
                 f_caption = getattr(info, 'caption', '')
                 if f_caption:
-                    f_caption = f"@HDFILM0900_BOT {f_caption.html}"
+                    f_caption = f"@VJ_Bots {f_caption.html}"
                 
                 old_title = getattr(file, "file_name", "Photo/Media") if file else "Photo/Media"
                 title = formate_file_name(old_title)
@@ -197,7 +272,6 @@ async def start(client, message):
                     logger.error(f"Failed to copy media in batch: {e}")
                     continue
             else:
-                # Text Message Copy Logic
                 try:
                     copied_msg = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 except FloodWait as e:
@@ -225,7 +299,6 @@ async def start(client, message):
                 pass
         return
 
-    # Single File Extraction Logic (Fix for Plain Text & Photos)
     try:
         real_data = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("ascii")
         if "_" in real_data:
@@ -279,7 +352,6 @@ async def start(client, message):
                 
             del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
         else:
-            # Safe Fallback for Pure Text Messages
             del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
             
         if AUTO_DELETE_MODE == True:
@@ -298,10 +370,6 @@ async def start(client, message):
         logger.error(f"Error extracting single file/text: {e}")
         await message.reply_text("<b>Error: Unable to fetch this message/file.</b>")
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
 @Client.on_message(filters.command('api') & filters.private)
 async def shortener_api_handler(client, m: Message):
     user_id = m.from_user.id
@@ -316,10 +384,6 @@ async def shortener_api_handler(client, m: Message):
         api = cmd[1].strip()
         await update_user_info(user_id, {"shortener_api": api})
         await m.reply("<b>Shortener API updated successfully to</b> " + api)
-
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
 
 @Client.on_message(filters.command("base_site") & filters.private)
 async def base_site_handler(client, m: Message):
@@ -340,12 +404,71 @@ async def base_site_handler(client, m: Message):
         await update_user_info(user_id, {"base_site": base_site})
         await m.reply("<b>Base Site updated successfully</b>")
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+# ==================== CALLBACKS (INCLUDING CUSTOM BATCH PACK) ====================
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
+    user_id = query.from_user.id
+    data = query.data
+    username = client.me.username
+    
+    # Custom Batch Inline Actions Processing
+    if data.startswith("cb_"):
+        if user_id not in CUSTOM_BATCH_DATA:
+            return await query.answer("No active batch session found. Start again with /custom_batch", show_alert=True)
+            
+        if data == "cb_pause":
+            await query.answer("Batch Paused. You can resume sending messages.", show_alert=True)
+            
+        elif data == "cb_cancel":
+            CUSTOM_BATCH_DATA.pop(user_id, None)
+            await query.message.edit_text("<b>CANCELLED</b>")
+            await query.answer("Batch processing cancelled.")
+            
+        elif data == "cb_generate":
+            msg_list = CUSTOM_BATCH_DATA.get(user_id, [])
+            if not msg_list:
+                return await query.answer("You haven't stored any messages yet!", show_alert=True)
+                
+            await query.answer("Generating link...")
+            status_msg = await query.message.edit_text("⚡ GENERATING LINK...... 🚀")
+            
+            outlist = []
+            for msg_id in msg_list:
+                outlist.append({
+                    "channel_id": LOG_CHANNEL,
+                    "msg_id": msg_id
+                })
+                
+            file_path = f"batchmode_{user_id}.json"
+            with open(file_path, "w+") as out:
+                json.dump(outlist, out)
+                
+            post = await client.send_document(LOG_CHANNEL, file_path, file_name="Batch.json", caption="⚠️ Custom Batch Generated.")
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                
+            string = str(post.id)
+            file_id = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
+            user = await get_user(user_id)
+            
+            if WEBSITE_URL_MODE == True:
+                share_link = f"{WEBSITE_URL}?Tech_VJ=BATCH-{file_id}"
+            else:
+                share_link = f"https://t.me/{username}?start=BATCH-{file_id}"
+                
+            CUSTOM_BATCH_DATA.pop(user_id, None)
+            
+            if user and user.get("base_site") and user.get("shortener_api") is not None:
+                short_link = await get_short_link(user, share_link)
+                text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {short_link}</b>"
+                await status_msg.edit_text(text, reply_markup=get_share_button(short_link))
+            else:
+                text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {share_link}</b>"
+                await status_msg.edit_text(text, reply_markup=get_share_button(share_link))
+        return
+
+    # Standard Button Callbacks
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "about":
@@ -359,7 +482,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InputMediaPhoto(random.choice(PICS))
         )
         reply_markup = InlineKeyboardMarkup(buttons)
-        me2 = (await client.get_me()).mention
+        me2 = client.me.mention
         await query.message.edit_text(
             text=script.ABOUT_TXT.format(me2),
             reply_markup=reply_markup,
@@ -384,7 +507,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             query.message.id, 
             InputMediaPhoto(random.choice(PICS))
         )
-        me2 = (await client.get_me()).mention
+        me2 = client.me.mention
         await query.message.edit_text(
             text=script.START_TXT.format(query.from_user.mention, me2),
             reply_markup=reply_markup,
