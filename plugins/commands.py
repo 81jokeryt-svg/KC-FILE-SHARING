@@ -121,7 +121,7 @@ async def start(client, message):
                 elif "_" in decode_file_id:
                     decode_file_id = decode_file_id.split("_", 1)[1]
                     
-                msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
+                msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
                 file = await client.download_media(msg)
                 
                 with open(file, "r") as file_data:
@@ -131,7 +131,7 @@ async def start(client, message):
                 BATCH_FILES[file_id] = msgs
             except Exception as e:
                 await sts.edit("<b>FAILED TO FETCH BATCH DATA ❌</b>")
-                return await client.send_message(LOG_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
+                return await client.send_message(DB_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
             
         filesarr = []
         for msg_item in msgs:
@@ -154,7 +154,7 @@ async def start(client, message):
                     file = getattr(info, file_type.value)
                     f_caption = getattr(info, 'caption', '')
                     if f_caption:
-                        f_caption = f"@VJ_Bots {f_caption.html}"
+                        f_caption = f" {f_caption.html}"
                     old_title = getattr(file, "file_name", "Media File")
                     title = formate_file_name(old_title)
                     
@@ -165,7 +165,7 @@ async def start(client, message):
                         except:
                             f_caption = f_caption
                     if f_caption is None:
-                        f_caption = f"@VJ_Bots {title}"
+                        f_caption = f" {title}"
                         
                     if STREAM_MODE == True and (info.video or info.document):
                         stream = f"{URL}watch/{str(info.id)}/{quote_plus(get_name(info))}?hash={get_hash(info)}"
@@ -230,7 +230,7 @@ async def start(client, message):
         else:
             decode_file_id = decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str
             
-        msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
+        msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
         
         if msg.media:
             media = getattr(msg, msg.media.value)
@@ -238,7 +238,7 @@ async def start(client, message):
             title = formate_file_name(old_title)
             size = get_size(media.file_size) if hasattr(media, "file_size") else "Unknown"
             
-            f_caption = f"@VJ_Bots <code>{title}</code>"
+            f_caption = f" <code>{title}</code>"
             if CUSTOM_FILE_CAPTION:
                 try:
                     f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
@@ -250,7 +250,7 @@ async def start(client, message):
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ載 •", url=download),
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀD •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
@@ -390,3 +390,65 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
+
+
+@Client.on_callback_query(filters.regex(r"^cb_"))
+async def handle_custom_batch_callbacks(bot, callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+    data = callback_query.data
+    username = (await bot.get_me()).username
+    
+    if user_id not in CUSTOM_BATCH_DATA:
+        return await callback_query.answer("No active batch session found.", show_alert=True)
+        
+    if data == "cb_pause":
+        await callback_query.answer("Batch Paused.", show_alert=True)
+        
+    elif data == "cb_cancel":
+        control_msgs = CUSTOM_BATCH_DATA[user_id].get("control_messages", [])
+        for msg in control_msgs:
+            try: await msg.delete()
+            except: pass
+        CUSTOM_BATCH_DATA.pop(user_id, None)
+        await callback_query.message.reply_text("❌ **Batch processing cancelled successfully.**")
+        await callback_query.answer()
+        
+    elif data == "cb_generate":
+        msg_list = CUSTOM_BATCH_DATA[user_id].get("msg_ids", [])
+        control_msgs = CUSTOM_BATCH_DATA[user_id].get("control_messages", [])
+        
+        if not msg_list:
+            return await callback_query.answer("You haven't stored any messages yet!", show_alert=True)
+            
+        for msg in control_msgs:
+            try: await msg.delete()
+            except: pass
+            
+        status_msg = await callback_query.message.reply_text("⚡ GENERATING LINK...... 🚀")
+        await callback_query.answer()
+        
+        outlist = []
+        for msg_id in msg_list:
+            outlist.append({"channel_id": DB_CHANNEL, "msg_id": msg_id})
+            
+        file_path = f"batchmode_{user_id}.json"
+        with open(file_path, "w+") as out:
+            json.dump(outlist, out)
+            
+        # 🌟 DB_CHANNEL me custom json save hoga
+        post = await bot.send_document(DB_CHANNEL, file_path, file_name="Batch.json", caption="⚠️ Custom Batch Generated.")
+        if os.path.exists(file_path): os.remove(file_path)
+            
+        string = str(post.id)
+        file_id = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
+        user = await get_user(user_id)
+        
+        share_link = f"{WEBSITE_URL}?Tech_VJ=BATCH-{file_id}" if WEBSITE_URL_MODE else f"https://t.me/{username}?start=BATCH-{file_id}"
+        CUSTOM_BATCH_DATA.pop(user_id, None)
+        
+        if user["base_site"] and user["shortener_api"] != None:
+            short_link = await get_short_link(user, share_link)
+            await status_msg.edit(f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {short_link}</b>", reply_markup=get_share_button(short_link))
+        else:
+            await status_msg.edit(f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {share_link}</b>", reply_markup=get_share_button(share_link))
+    
