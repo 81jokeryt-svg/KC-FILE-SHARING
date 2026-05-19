@@ -55,7 +55,7 @@ async def handle_conversations(bot, message):
         processing_msg = await message.reply_text("<b>PROCESSING... 🚀</b>")
         
         try:
-            post = await message.copy(LOG_CHANNEL)
+            post = await message.copy(DB_CHANNEL)
             file_id = str(post.id)
             string = 'file_' + file_id
             outstr = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
@@ -144,7 +144,7 @@ async def handle_conversations(bot, message):
             with open(file_name, "w+") as out:
                 json.dump(outlist, out)
                 
-            post = await bot.send_document(LOG_CHANNEL, file_name, file_name="Batch.json", caption="⚠️ Batch Generated For Filestore.")
+            post = await bot.send_document(DB_CHANNEL, file_name, file_name="Batch.json", caption="⚠️ Batch Generated For Filestore.")
             os.remove(file_name)
             
             string = str(post.id)
@@ -166,7 +166,7 @@ async def handle_conversations(bot, message):
 @Client.on_message((filters.document | filters.video | filters.audio | filters.photo) & filters.private & filters.create(allowed))
 async def incoming_gen_link(bot, message):
     username = (await bot.get_me()).username
-    post = await message.copy(LOG_CHANNEL)
+    post = await message.copy(DB_CHANNEL)
     file_id = str(post.id)
     string = 'file_' + file_id
     outstr = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
