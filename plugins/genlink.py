@@ -289,92 +289,71 @@ async def gen_link_batch(bot, message):
     )
 
 
-# 🛠️ 5. COMMAND HANDLER: /custom_batch (Dynamic single-single message batch)
-@Client.on_message(filters.command(['custom_batch']) & filters.private & filters.create(allowed))
-async def gen_custom_batch_start(bot, message):
+# ==================== COMMAND 3: /custom_batch (USER-DRIVEN CUSTOM BATCH) ====================
+
+@Client.on_message(filters.command(['custom_batch']) & filters.create(allowed))
+async def start_custom_batch(bot, message):
     user_id = message.from_user.id
-    if user_id in AWAITING_CONTENT: AWAITING_CONTENT[user_id] = False
-    if user_id in BATCH_STATE: del BATCH_STATE[user_id]
-    
-    # Empty structures ke sath state define karein
-    CUSTOM_BATCH_STATE[user_id] = {"msg_ids": [], "control_messages": []}
-    await message.reply_text("📥 **SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE**")
+    CUSTOM_BATCH_DATA[user_id] = []
+    await message.reply('<b>SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE</b>')
 
+# ==================== CALLBACK QUERY HANDLER FOR CUSTOM BATCH PANELS ====================
 
-# 🛠️ 6. CALLBACK QUERY HANDLER FOR CUSTOM BATCH BUTTONS
-@Client.on_callback_query(filters.regex("^c_batch_"))
-async def handle_custom_batch_buttons(bot, callback_query):
+@Client.on_callback_query(filters.regex(r"^cb_"))
+async def handle_custom_batch_callbacks(bot, callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
     data = callback_query.data
     username = (await bot.get_me()).username
     
-    if user_id not in CUSTOM_BATCH_STATE:
-        await callback_query.answer("Koi active batch session nahi mila.", show_alert=True)
-        return
-
-    # 🔗 GENERATE LINK CLICKED
-    if data == "c_batch_generate":
-        msg_ids = CUSTOM_BATCH_STATE[user_id].get("msg_ids", [])
-        control_msgs = CUSTOM_BATCH_STATE[user_id].get("control_messages", [])
+    if user_id not in CUSTOM_BATCH_DATA:
+        return await callback_query.answer("No active batch session found. Start again with /custom_batch", show_alert=True)
         
-        if not msg_ids:
-            await callback_query.answer("Pehle kuch messages toh bhejo!", show_alert=True)
-            return
+    if data == "cb_pause":
+        await callback_query.answer("Batch Paused. You can resume sending messages.", show_alert=True)
+        
+    elif data == "cb_cancel":
+        CUSTOM_BATCH_DATA.pop(user_id, None)
+        await callback_query.message.edit("<b>CANCELLED</b>")
+        await callback_query.answer("Batch processing cancelled.")
+        
+    elif data == "cb_generate":
+        msg_list = CUSTOM_BATCH_DATA.get(user_id, [])
+        if not msg_list:
+            return await callback_query.answer("You haven't stored any messages yet!", show_alert=True)
             
-        # 🌟 FIXED: Pure pichle text messages ko loop chala kar screen se saaf karo
-        for msg in control_msgs:
-            try:
-                await msg.delete()
-            except Exception:
-                pass
-                
-        # Naya dynamic status message send karenge
-        sts_msg = await callback_query.message.reply_text("🚀 **%s**" % "GENERATING LINK...")
+        await callback_query.answer("Generating link...")
+        status_msg = await callback_query.message.edit("⚡ GENERATING LINK...... 🚀")
         
         outlist = []
-        for m_id in msg_ids:
-            outlist.append({"channel_id": LOG_CHANNEL, "msg_id": m_id})
+        for msg_id in msg_list:
+            outlist.append({
+                "channel_id": LOG_CHANNEL,
+                "msg_id": msg_id
+            })
             
-        file_name = f"batchmode_{user_id}.json"
-        with open(file_name, "w+") as out:
+        file_path = f"batchmode_{user_id}.json"
+        with open(file_path, "w+") as out:
             json.dump(outlist, out)
             
-        post = await bot.send_document(LOG_CHANNEL, file_name, file_name="Batch.json", caption="⚠️ Custom Batch Generated.")
-        os.remove(file_name)
-        
-        # State clear karna
-        del CUSTOM_BATCH_STATE[user_id]
-        
+        post = await bot.send_document(LOG_CHANNEL, file_path, file_name="Batch.json", caption="⚠️ Custom Batch Generated.")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
         string = str(post.id)
         file_id = base64.urlsafe_b64encode(string.encode("ascii")).decode().strip("=")
-        
         user = await get_user(user_id)
-        share_link = f"{WEBSITE_URL}?Tech_VJ=BATCH-{file_id}" if WEBSITE_URL_MODE else f"https://t.me/{username}?start=BATCH-{file_id}"
+        
+        if WEBSITE_URL_MODE == True:
+            share_link = f"{WEBSITE_URL}?Tech_VJ=BATCH-{file_id}"
+        else:
+            share_link = f"https://t.me/{username}?start=BATCH-{file_id}"
+            
+        CUSTOM_BATCH_DATA.pop(user_id, None)
         
         if user["base_site"] and user["shortener_api"] != None:
             short_link = await get_short_link(user, share_link)
-            response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\nContains `{len(msg_ids)}` files.\n\n🖇️ sʜᴏʀᴛ ʟɪɴᴋ :- {short_link}</b>"
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {short_link}</b>"
+            await status_msg.edit(text, reply_markup=get_share_button(short_link))
         else:
-            response_text = f"<b>⭕ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ:\n\nContains `{len(msg_ids)}` files.\n\n🔗 ᴏʀɪɢɪɴᴀ ʟɪɴᴋ :- {share_link}</b>"
-            
-        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("📤 SHARE URL", url=f"https://t.me/share/url?url={share_link}")]])
-        
-        # 'Generating...' text message ko change karke final link de do
-        await sts_msg.edit_text(response_text, reply_markup=keyboard, disable_web_page_preview=True)
-
-    # ❌ CANCEL BATCH CLICKED
-    elif data == "c_batch_cancel":
-        control_msgs = CUSTOM_BATCH_STATE[user_id].get("control_messages", [])
-        for msg in control_msgs:
-            try:
-                await msg.delete()
-            except Exception:
-                pass
-                
-        del CUSTOM_BATCH_STATE[user_id]
-        await callback_query.message.reply_text("❌ **Batch generation cancelled successfully.**")
-        await callback_query.answer()
-        
-    # ⏸️ PAUSE BATCH CLICKED
-    elif data == "c_batch_pause":
-        await callback_query.answer("Batch paused! Aap jab chahein tab messages bhej sakte hain.", show_alert=True)
+            text = f"<b>🎁 HERE IS YOUR LINK :\n\n⚠️ {share_link}</b>"
+            await status_msg.edit(text, reply_markup=get_share_button(share_link))
