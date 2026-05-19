@@ -31,7 +31,6 @@ BATCH_FILES = {}
 
 def get_size(size):
     """Get size in readable format"""
-
     units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
     size = float(size)
     i = 0
@@ -41,16 +40,17 @@ def get_size(size):
     return "%.2f %s" % (size, units[i])
 
 def formate_file_name(file_name):
+    if not file_name:
+        return "Unknown_File"
     chars = ["[", "]", "(", ")"]
     for c in chars:
-        file_name.replace(c, "")
+        file_name = file_name.replace(c, "")
     file_name = '@VJ_Botz ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ0
-
+# Ask Doubt on telegram @KingVJ01
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
@@ -79,16 +79,13 @@ async def start(client, message):
         )
         return
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-    
     data = message.command[1]
     try:
         pre, file_id = data.split('_', 1)
     except:
         file_id = data
         pre = ""
+        
     if data.split("-", 1)[0] == "verify":
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
@@ -109,6 +106,7 @@ async def start(client, message):
                 text="<b>Invalid link or Expired link !</b>",
                 protect_content=True
             )
+            
     elif data.split("-", 1)[0] == "BATCH":
         try:
             if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
@@ -125,22 +123,29 @@ async def start(client, message):
                 return
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
+            
         sts = await message.reply("**🔺 ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ**")
         file_id = data.split("-", 1)[1]
         msgs = BATCH_FILES.get(file_id)
         if not msgs:
             decode_file_id = base64.urlsafe_b64decode(file_id + "=" * (-len(file_id) % 4)).decode("ascii")
             msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
-            media = getattr(msg, msg.media.value)
-            file_id = media.file_id
-            file = await client.download_media(file_id)
+            media = getattr(msg, msg.media.value if msg.media else "", None)
+            
+            if media:
+                file_to_download = media.file_id
+            else:
+                file_to_download = msg.document.file_id
+                
+            file = await client.download_media(file_to_download)
             try: 
                 with open(file) as file_data:
                     msgs=json.loads(file_data.read())
-            except:
-                await sts.edit("FAILED")
-                return await client.send_message(LOG_CHANNEL, "UNABLE TO OPEN FILE.")
-            os.remove(file)
+            except Exception as e:
+                await sts.edit(f"FAILED: {e}")
+                return await client.send_message(LOG_CHANNEL, f"UNABLE TO OPEN FILE: {e}")
+            if os.path.exists(file):
+                os.remove(file)
             BATCH_FILES[file_id] = msgs
             
         filesarr = []
@@ -148,54 +153,63 @@ async def start(client, message):
             channel_id = int(msg.get("channel_id"))
             msgid = msg.get("msg_id")
             info = await client.get_messages(channel_id, int(msgid))
+            
+            # Universal Copy Handler (Text/Photo/Video fix)
             if info.media:
                 file_type = info.media
-                file = getattr(info, file_type.value)
+                file = getattr(info, file_type.value, None)
                 f_caption = getattr(info, 'caption', '')
                 if f_caption:
-                    f_caption = f"@VJ_Bots {f_caption.html}"
-                old_title = getattr(file, "file_name", "")
+                    f_caption = f"@HDFILM0900_BOT {f_caption.html}"
+                
+                old_title = getattr(file, "file_name", "Photo/Media") if file else "Photo/Media"
                 title = formate_file_name(old_title)
-                size=get_size(int(file.file_size))
-                if BATCH_FILE_CAPTION:
+                size = get_size(int(file.file_size)) if file and hasattr(file, 'file_size') else "0 Bytes"
+                
+                if BATCH_FILE_CAPTION and file:
                     try:
                         f_caption=BATCH_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='' if f_caption is None else f_caption)
                     except:
                         f_caption=f_caption
                 if f_caption is None:
                     f_caption = f"@VJ_Bots {title}"
-                if STREAM_MODE == True:
-                    if info.video or info.document:
-                        log_msg = info
-                        fileName = {quote_plus(get_name(log_msg))}
-                        stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                        download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                        button = [[
-                            InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                            InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
-                        ],[
-                            InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
-                        ]]
-                        reply_markup=InlineKeyboardMarkup(button)
+                    
+                if STREAM_MODE == True and (info.video or info.document):
+                    log_msg = info
+                    stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                    download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                    button = [[
+                        InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                        InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
+                    ],[
+                        InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    ]]
+                    reply_markup=InlineKeyboardMarkup(button)
                 else:
                     reply_markup = None
+                    
                 try:
-                    msg = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
+                    copied_msg = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
                 except FloodWait as e:
                     await asyncio.sleep(e.value)
-                    msg = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
-                except:
+                    copied_msg = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
+                except Exception as e:
+                    logger.error(f"Failed to copy media in batch: {e}")
                     continue
             else:
+                # Text Message Copy Logic
                 try:
-                    msg = await info.copy(chat_id=message.from_user.id, protect_content=False)
+                    copied_msg = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 except FloodWait as e:
                     await asyncio.sleep(e.value)
-                    msg = await info.copy(chat_id=message.from_user.id, protect_content=False)
-                except:
+                    copied_msg = await info.copy(chat_id=message.from_user.id, protect_content=False)
+                except Exception as e:
+                    logger.error(f"Failed to copy text in batch: {e}")
                     continue
-            filesarr.append(msg)
+                    
+            filesarr.append(copied_msg)
             await asyncio.sleep(1) 
+            
         await sts.delete()
         if AUTO_DELETE_MODE == True:
             k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
@@ -205,14 +219,22 @@ async def start(client, message):
                     await x.delete()
                 except:
                     pass
-            await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+            try:
+                await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+            except:
+                pass
         return
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+    # Single File Extraction Logic (Fix for Plain Text & Photos)
+    try:
+        real_data = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("ascii")
+        if "_" in real_data:
+            pre, decode_file_id = real_data.split("_", 1)
+        else:
+            decode_file_id = real_data
+    except:
+        decode_file_id = data
 
-    pre, decode_file_id = ((base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))).decode("ascii")).split("_", 1)
     if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
         btn = [[
             InlineKeyboardButton("Verify", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start="))
@@ -225,36 +247,41 @@ async def start(client, message):
             reply_markup=InlineKeyboardMarkup(btn)
         )
         return
+        
     try:
         msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
         if msg.media:
-            media = getattr(msg, msg.media.value)
-            title = formate_file_name(media.file_name)
-            size=get_size(media.file_size)
+            media = getattr(msg, msg.media.value, None)
+            old_title = getattr(media, "file_name", "Photo/Media") if media else "Photo/Media"
+            title = formate_file_name(old_title)
+            size = get_size(media.file_size) if media and hasattr(media, 'file_size') else "0 Bytes"
+            
             f_caption = f"@VJ_Bots <code>{title}</code>"
-            if CUSTOM_FILE_CAPTION:
+            if CUSTOM_FILE_CAPTION and media:
                 try:
                     f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
                 except:
-                    return
-            if STREAM_MODE == True:
-                if msg.video or msg.document:
-                    log_msg = msg
-                    fileName = {quote_plus(get_name(log_msg))}
-                    stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                    download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                    button = [[
-                        InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                        InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
-                    ],[
-                        InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
-                    ]]
-                    reply_markup=InlineKeyboardMarkup(button)
+                    pass
+                    
+            if STREAM_MODE == True and (msg.video or msg.document):
+                log_msg = msg
+                stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                button = [[
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
+                ],[
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                ]]
+                reply_markup=InlineKeyboardMarkup(button)
             else:
                 reply_markup = None
+                
             del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
         else:
+            # Safe Fallback for Pure Text Messages
             del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
+            
         if AUTO_DELETE_MODE == True:
             k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(AUTO_DELETE_TIME)
@@ -262,11 +289,15 @@ async def start(client, message):
                 await del_msg.delete()
             except:
                 pass
-            await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            try:
+                await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            except:
+                pass
         return
-    except:
-        pass
-        
+    except Exception as e:
+        logger.error(f"Error extracting single file/text: {e}")
+        await message.reply_text("<b>Error: Unable to fetch this message/file.</b>")
+
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
@@ -300,9 +331,9 @@ async def base_site_handler(client, m: Message):
         return await m.reply(text=text, disable_web_page_preview=True)
     elif len(cmd) == 2:
         base_site = cmd[1].strip()
-        if base_site == None:
-            await update_user_info(user_id, {"base_site": base_site})
-            return await m.reply("<b>Base Site updated successfully</b>")
+        if base_site.lower() == "none":
+            await update_user_info(user_id, {"base_site": None})
+            return await m.reply("<b>Base Site removed successfully</b>")
             
         if not domain(base_site):
             return await m.reply(text=text, disable_web_page_preview=True)
@@ -334,10 +365,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
-
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
     
     elif query.data == "start":
         buttons = [[
@@ -363,10 +390,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
-
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
     
     elif query.data == "clone":
         buttons = [[
@@ -384,10 +407,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )          
-
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
     
     elif query.data == "help":
         buttons = [[
@@ -404,8 +423,4 @@ async def cb_handler(client: Client, query: CallbackQuery):
             text=script.HELP_TXT,
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
-        )  
-        
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+        )
