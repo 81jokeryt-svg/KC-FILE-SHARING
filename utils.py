@@ -2,9 +2,9 @@
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-import logging, asyncio, os, re, random, pytz, aiohttp, requests, string, json, http.client
+import logging, asyncio, os, re, random, pytz, aiohttp, requests, string, json, http.client, time
 from datetime import date, datetime
-from config import SHORTLINK_API, SHORTLINK_URL
+from config import SHORTLINK_API, SHORTLINK_URL, VERIFY_EXPIRE_TIME
 from shortzy import Shortzy
 
 logger = logging.getLogger(__name__)
@@ -60,21 +60,20 @@ async def get_token(bot, userid, link):
 async def verify_user(bot, userid, token):
     user = await bot.get_users(userid)
     TOKENS[user.id] = {token: True}
-    tz = pytz.timezone('Asia/Kolkata')
-    today = date.today()
-    VERIFIED[user.id] = str(today)
+    # 🌟 UPDATED: Date ki jagah ab current timestamp save hoga seconds me
+    VERIFIED[user.id] = time.time()
 
 async def check_verification(bot, userid):
     user = await bot.get_users(userid)
-    tz = pytz.timezone('Asia/Kolkata')
-    today = date.today()
     if user.id in VERIFIED.keys():
-        EXP = VERIFIED[user.id]
-        years, month, day = EXP.split('-')
-        comp = date(int(years), int(month), int(day))
-        if comp<today:
-            return False
+        # 🌟 UPDATED: Ab check hoga ki verification ko expire hue kitna time hua
+        last_verified = VERIFIED[user.id]
+        if (time.time() - last_verified) > VERIFY_EXPIRE_TIME:
+            return False  # Verification Expire ho gaya
         else:
-            return True
+            return True   # Verification Valid hai
     else:
         return False
+
+
+# utils.py
