@@ -62,6 +62,7 @@ VERIFY_MODE = bool(environ.get('VERIFY_MODE', False)) # Set True or False
 SHORTLINK_URL = environ.get("SHORTLINK_URL", "") # shortlink domain without https://
 SHORTLINK_API = environ.get("SHORTLINK_API", "") # shortlink api
 VERIFY_TUTORIAL = environ.get("VERIFY_TUTORIAL", "") # how to open link 
+VERIFY_EXPIRE_TIME = int(environ.get("VERIFY_EXPIRE_TIME", "86400"))
 
 # Website Info:
 WEBSITE_URL_MODE = bool(environ.get('WEBSITE_URL_MODE', False)) # Set True or False
