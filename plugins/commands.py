@@ -81,8 +81,9 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
+            # 🌟 UPDATED: Midnight text ko hata kar hourly basis access dynamic message set kar diya hai
             await message.reply_text(
-                text=f"<b>Hey {message.from_user.mention}, You are successfully verified !\nNow you have unlimited access for all files till today midnight.</b>",
+                text=f"<b>Hey {message.from_user.mention}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>",
                 protect_content=True
             )
             await verify_user(client, userid, token)
@@ -90,7 +91,7 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         return
 
-    # 2. HANDLE BATCH LINKS (Fully Fixed 🛠️)
+    # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
             if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
@@ -108,24 +109,20 @@ async def start(client, message):
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
             
-        sts = await message.reply("<b>PLEASE WAIT... ⏳</b>") # Exact video matching text
+        sts = await message.reply("<b>PLEASE WAIT... ⏳</b>")
         file_id = data.split("-", 1)[1]
         msgs = BATCH_FILES.get(file_id)
         
         if not msgs:
             try:
-                # Padding automatic correct karke decode karega string ko
                 decode_file_id = base64.urlsafe_b64decode(file_id + "=" * (-len(file_id) % 4)).decode("ascii")
                 
-                # Agar generator file ID string ke sath 'file_' bhej raha ho to use clean karein
                 if "file_" in decode_file_id:
                     decode_file_id = decode_file_id.replace("file_", "")
                 elif "_" in decode_file_id:
                     decode_file_id = decode_file_id.split("_", 1)[1]
                     
                 msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
-                
-                # Log channel se direct json document file ko server par download karega
                 file = await client.download_media(msg)
                 
                 with open(file, "r") as file_data:
@@ -183,10 +180,9 @@ async def start(client, message):
                     msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 
                 filesarr.append(msg_out)
-                await asyncio.sleep(1) # Floodwait se bachne ke liye interval delay
+                await asyncio.sleep(1)
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                # Retry copy process post flood timeout window
                 msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 filesarr.append(msg_out)
             except Exception as e:
@@ -335,7 +331,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
         ],[
-            InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
+            InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀ陶 ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
             InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_bots')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
@@ -389,3 +385,5 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
+
+# commands.py
