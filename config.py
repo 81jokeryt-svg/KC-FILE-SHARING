@@ -1,3 +1,8 @@
+# Don't Remove Credit Tg - @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
+# Ask Doubt on telegram @KingVJ01
+
+
 import re
 import os
 from os import environ
@@ -18,17 +23,8 @@ API_HASH = environ.get("API_HASH", "")
 BOT_TOKEN = environ.get("BOT_TOKEN", "")
 
 PICS = (environ.get('PICS', 'https://graph.org/file/ce1723991756e48c35aa1.jpg')).split() # Bot Start Picture
-
-# 🌟 ADMINS LIST SETUP (Isme aapki ID list me save hoti hai)
-ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '5898522531').split()]
-
-# 🌟 BACKWARD COMPATIBILITY: Agar kisi file ko ek single ID chahiye, toh list ka pehla admin nikal lega
-ADMIN_ID = ADMINS[0] if ADMINS else 5898522531
-
-# 🌟 UPI CONFIG: Payment system ke liye UPI variable framework mapping
-UPI_ID = environ.get("UPI_ID", "6398324472@fam") 
-
-BOT_USERNAME = environ.get("BOT_USERNAME", "PremiumstorebyACbot") # without @
+ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '').split()]
+BOT_USERNAME = environ.get("BOT_USERNAME", "") # without @
 PORT = environ.get("PORT", "8080")
 
 # Clone Info :-
@@ -40,7 +36,7 @@ CDB_NAME = environ.get("CDB_NAME", "clonetechvj")
 
 # Database Information
 DB_URI = environ.get("DB_URI", "")
-DB_NAME = environ.get("DB_NAME", "vjjj")
+DB_NAME = environ.get("DB_NAME", "techvjbotz")
 
 # Auto Delete Information
 AUTO_DELETE_MODE = bool(environ.get('AUTO_DELETE_MODE', True)) # Set True or False
@@ -50,25 +46,22 @@ AUTO_DELETE = int(environ.get("AUTO_DELETE", "30")) # Time in Minutes
 AUTO_DELETE_TIME = int(environ.get("AUTO_DELETE_TIME", "1800")) # Time in Seconds
 
 # Channel Information
-LOG_CHANNEL = int(environ.get("LOG_CHANNEL", "-1003889400872"))
+LOG_CHANNEL = int(environ.get("LOG_CHANNEL", ""))
 
 # File Caption Information
 CUSTOM_FILE_CAPTION = environ.get("CUSTOM_FILE_CAPTION", f"{script.CAPTION}")
 BATCH_FILE_CAPTION = environ.get("BATCH_FILE_CAPTION", CUSTOM_FILE_CAPTION)
 
 # Enable - True or Disable - False
-PUBLIC_FILE_STORE = is_enabled((environ.get('PUBLIC_FILE_STORE', "False")), True)
+PUBLIC_FILE_STORE = is_enabled((environ.get('PUBLIC_FILE_STORE', "True")), True)
 
 # Verify Info :-
-VERIFY_MODE = bool(environ.get('VERIFY_MODE', True)) # Set True or False
-
-# 🌟 NEW: Verification Expiry Time Configuration (Default: 24 Hours in seconds)
-VERIFY_EXPIRE_TIME = int(environ.get("VERIFY_EXPIRE_TIME", "300")) 
+VERIFY_MODE = bool(environ.get('VERIFY_MODE', False)) # Set True or False
 
 # If Verify Mode Is True Then Fill All Required Variable, If False Then Don't Fill.
-SHORTLINK_URL = environ.get("SHORTLINK_URL", "linkshortify.com") # shortlink domain without https://
-SHORTLINK_API = environ.get("SHORTLINK_API", "9d9199caec2c2e30e0670f1549ffa1a316caa541") # shortlink api
-VERIFY_TUTORIAL = environ.get("VERIFY_TUTORIAL", "https://t.me/howanubhav/14") # how to open link 
+SHORTLINK_URL = environ.get("SHORTLINK_URL", "") # shortlink domain without https://
+SHORTLINK_API = environ.get("SHORTLINK_API", "") # shortlink api
+VERIFY_TUTORIAL = environ.get("VERIFY_TUTORIAL", "") # how to open link 
 
 # Website Info:
 WEBSITE_URL_MODE = bool(environ.get('WEBSITE_URL_MODE', False)) # Set True or False
@@ -90,19 +83,7 @@ else:
 URL = environ.get("URL", "https://testofvjfilter-1fa60b1b8498.herokuapp.com/")
 
 
-# 🌟 🌟 🌟 NEW: DYNAMIC PREMIUM SETTINGS FOR VENOM MENU 🌟 🌟 🌟
-# Yeh settings check karegi ki user ke dynamic menu ka base configuration kya hona chahiye.
-DEFAULT_SETTINGS = {
-    "link_shortener": is_enabled(environ.get("LINK_SHORTENER_DEFAULT", "False"), False),
-    "token_verification": is_enabled(environ.get("TOKEN_VERIFY_DEFAULT", "False"), False),
-    "custom_caption": is_enabled(environ.get("CUSTOM_CAPTION_DEFAULT", "True"), True),
-    "force_subscribe": is_enabled(environ.get("FORCE_SUB_DEFAULT", "True"), True),
-    "auto_delete": is_enabled(environ.get("AUTO_DELETE_DEFAULT", "False"), False),
-    "protect_content": is_enabled(environ.get("PROTECT_CONTENT_DEFAULT", "False"), False),
-    "stream_download": is_enabled(environ.get("STREAM_DOWNLOAD_DEFAULT", "False"), False)
-}
-
-
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01_
+# Ask Doubt on telegram @KingVJ01
+    

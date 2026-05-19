@@ -143,57 +143,6 @@ Nᴀᴍᴇ - {}</b>
 🌐 Tɪᴍᴇᴢᴏɴᴇ : <code>Asia/Kolkata</code>
 🛠️ Bᴜɪʟᴅ Sᴛᴀᴛᴜs: <code>v2.7.1 [ Sᴛᴀʙʟᴇ ]</code></b>"""
 
-
-
-    NOT_VERIFIED_TEXT = """<b>♨️ YOU ARE NOT VERIFIED !</b>
-KINDLY VERIFY TO CONTINUE & YOU CAN GET UNLIMITED ACCESS FOR 1 HOURS ✅
-
-⚜️ <i>इस BOT से MOVIE प्राप्त करने के लिए आपको VERIFY करना आवश्यक है VERIFY करने के बाद आप 1 घंटे तक UNLIMITED MOVIES प्राप्त कर सकते हो।</i> 
-
-🔥 <i>अगर आप VERIFY नहीं करना चाहते तो आप PREMIUM ले सकते हो, PREMIUM लेने के बाद आप UNLIMITED MOVIES प्राप्त कर पाओगे और आपको VERIFY करने की कोई जरूरत नहीं है।</i>
-
-<b>PLAN DETAILS के लिए CLICK करें 👉 /plan</b>"""
-    VERIFIED_SUCCESS_TEXT = "<b>Hey {}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>"
-
-    PREMIUM_PLAN_TEXT = """👑 <b>PREMIUM SUBSCRIPTION PLAN</b>
-──────────────────────────────
-
-💎 <b>PREMIUM PLANS:</b>
-
-• <b>15₹</b> ➜ 7 DAY
-• <b>50₹</b> ➜ 1 MONTH
-• <b>120₹</b> ➜ 3 MONTH
-• <b>220₹</b> ➜ 6 MONTH
-
-🌟 <b>PREMIUM FEATURES:</b>
-
-❍ <b>SEARCH IN THE BOT</b>
-❍ <b>GET UNLIMITED FILES</b>
-❍ <b>NO NEED TO OPEN LINKS</b>
-❍ <b>NO NEED VERIFY</b>
-❍ <b>DIRECT FILES</b>
-
-──────────────────────────────
-➡️ <b>CHECK YOUR ACTIVE PLAN BY USING :</b> /myplan
-
-⚠️ <b>MUST SEND SCREENSHOT AFTER PAYMENT !!</b>"""
-
-    QR_REPLY_TEXT = """⚡ <b>WHAT ARE YOU LOOKING AT ?</b>
-
-➕ PAY AMOUNT ACCORDING TO YOUR PLAN AND ENJOY PREMIUM MEMBERSHIP !
-
-⚠️ <b>MUST SEND SCREENSHOT AFTER PAYMENT</b>
-पेमेंट होने के बाद हमें स्क्रीन शॉट भेजें !!"""
-
-    UPI_REPLY_TEXT = """⚡ <b>WHAT ARE YOU LOOKING AT ?</b>
-
-➡️ <b>UPI ID ➜</b> <code>6398324472@fam</code>
-
-➕ PAY AMOUNT ACCORDING TO YOUR PLAN AND ENJOY PREMIUM MEMBERSHIP !
-
-⚠️ <b>MUST SEND SCREENSHOT AFTER PAYMENT</b>
-पेमेंट होने के बाद हमें स्क्रीन शॉट भेजें !!"""
-    
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
