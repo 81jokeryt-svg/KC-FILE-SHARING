@@ -40,7 +40,7 @@ def formate_file_name(file_name):
     chars = ["[", "]", "(", ")"]
     for c in chars:
         file_name = file_name.replace(c, "")
-    file_name = '@VJ_Botz ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
+    file_name = '@HDFILM0900_BOT ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
 @Client.on_message(filters.command("start") & filters.incoming)
@@ -122,7 +122,7 @@ async def start(client, message):
                 elif "_" in decode_file_id:
                     decode_file_id = decode_file_id.split("_", 1)[1]
                     
-                msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
+                msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
                 file = await client.download_media(msg)
                 
                 with open(file, "r") as file_data:
@@ -132,7 +132,7 @@ async def start(client, message):
                 BATCH_FILES[file_id] = msgs
             except Exception as e:
                 await sts.edit("<b>FAILED TO FETCH BATCH DATA ❌</b>")
-                return await client.send_message(LOG_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
+                return await client.send_message(DB_CHANNEL, f"UNABLE TO OPEN BATCH FILE: {str(e)}")
             
         filesarr = []
         for msg_item in msgs:
@@ -149,7 +149,7 @@ async def start(client, message):
                     file = getattr(info, file_type.value)
                     f_caption = getattr(info, 'caption', '')
                     if f_caption:
-                        f_caption = f"@VJ_Bots {f_caption.html}"
+                        f_caption = f"@HDFILM0900_BOT {f_caption.html}"
                     old_title = getattr(file, "file_name", "Media File")
                     title = formate_file_name(old_title)
                     
@@ -160,7 +160,7 @@ async def start(client, message):
                         except:
                             f_caption = f_caption
                     if f_caption is None:
-                        f_caption = f"@VJ_Bots {title}"
+                        f_caption = f"@HDFILM0900_BOT {title}"
                         
                     if STREAM_MODE == True and (info.video or info.document):
                         stream = f"{URL}watch/{str(info.id)}/{quote_plus(get_name(info))}?hash={get_hash(info)}"
@@ -225,7 +225,7 @@ async def start(client, message):
         else:
             decode_file_id = decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str
             
-        msg = await client.get_messages(LOG_CHANNEL, int(decode_file_id))
+        msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
         
         if msg.media:
             media = getattr(msg, msg.media.value)
