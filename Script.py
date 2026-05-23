@@ -55,7 +55,7 @@ If You Want To Remove Api Then Copy This And Send To Bot - `/api None`"""
 
 👥 STORY REQUEST GROUP: <a href=https://t.me/pratilipifm0900>CLICK HERE </a>
 
-📢 STORY CHANNEL: <a href=https://t.me/freestoryhubMR><STORY/a></b>
+📢 STORY CHANNEL: <a href=https://t.me/freestoryhubMR>STORY</a></b>
 """
 
     CABOUT_TXT = """<b>ʜɪ ɪ ᴀᴍ ᴘᴇʀᴍᴀɴᴇɴᴛ ғɪʟᴇ sᴛᴏʀᴇ ʙᴏᴛ ᴡɪᴛʜ ᴄʟᴏɴᴇ ғᴇᴀᴛᴜʀᴇ + ᴄᴜsᴛᴏᴍ ᴜʀʟ sʜᴏʀᴛɴᴇʀ ɪᴛ ᴍᴇᴀɴs ᴀɴʏ ᴜsᴇʀ ᴄᴀɴ sᴇᴛ ʜɪs ᴜʀʟ sʜᴏʀᴛɴᴇʀ ᴀɴᴅ + ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ.
