@@ -10,7 +10,6 @@ from validators import domain
 from Script import script
 from plugins.dbusers import db
 from pyrogram import Client, filters, enums
-from pyrogram.enums import ChatAction  # 🌟 ChatAction import kiya gaya hai
 from plugins.users_api import get_user, update_user_info
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
@@ -24,6 +23,14 @@ from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
+
+# 🌟 Background mein message delete karne ke liye helper function
+async def auto_delete_msg(message, delay=300):
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except Exception as e:
+        logger.error(f"Error deleting temporary verification message: {e}")
 
 def get_size(size):
     """Get size in readable format"""
@@ -52,8 +59,7 @@ async def start(client, message):
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
     
     if len(message.command) != 2:
-        # 🌟 Start message se pehle Typing animation
-        await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+        await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
         await asyncio.sleep(1)
         
         buttons = [[
@@ -86,14 +92,15 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
-            # 🌟 Successful verification alert par Typing effect
-            await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+            await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             await asyncio.sleep(1)
             
-            await message.reply_text(
-                text=f"<b>Hey {message.from_user.mention}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>",
+            # 🌟 Successful Verification Message with 5 min auto-delete timer
+            success_msg = await message.reply_text(
+                text=script.VERIFIED_SUCCESS_TXT.format(message.from_user.mention),
                 protect_content=True
             )
+            asyncio.create_task(auto_delete_msg(success_msg, 300))
             await verify_user(client, userid, token)
         else:
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
@@ -108,11 +115,13 @@ async def start(client, message):
                 ],[
                     InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
                 ]]
-                await message.reply_text(
-                    text="<b>You are not verified !\nKindly verify to continue !</b>",
+                # 🌟 Not Verified Warning Message with 5 min auto-delete timer
+                not_verified_msg = await message.reply_text(
+                    text=script.NOT_VERIFIED_TXT,
                     protect_content=True,
                     reply_markup=InlineKeyboardMarkup(btn)
                 )
+                asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
                 return
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
@@ -177,18 +186,16 @@ async def start(client, message):
                             InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
                             InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                         ],[
-                            InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪ難 ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                            InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪn ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                         ]]
                         reply_markup = InlineKeyboardMarkup(button)
                     else:
                         reply_markup = None
                     
-                    # 🌟 Batch ke andar har file copy hone se pehle file sending action show hoga
-                    await client.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+                    await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
                     msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
                 else:
-                    # 🌟 Agar normal text message hai to typing status show karega
-                    await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+                    await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
                     msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 
                 filesarr.append(msg_out)
@@ -221,11 +228,13 @@ async def start(client, message):
                 ],[
             InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
         ]]
-        await message.reply_text(
-            text="<b>You are not verified !\nKindly verify to continue !</b>",
+        # 🌟 Single link verification warning message with 5 min auto-delete timer
+        not_verified_msg = await message.reply_text(
+            text=script.NOT_VERIFIED_TXT,
             protect_content=True,
             reply_markup=InlineKeyboardMarkup(btn)
         )
+        asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
         return
 
     try:
@@ -266,14 +275,12 @@ async def start(client, message):
             else:
                 reply_markup = None
                 
-            # 🌟 Single File delivery se pehle "sending a file..." ka status trigger hoga
-            await client.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
-            await asyncio.sleep(1) # Ek chota human-like pause status ke baad
+            await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
+            await asyncio.sleep(1) 
             
             del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
         else:
-            # 🌟 Agar non-media message copy ho raha ho to Typing trigger hoga
-            await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+            await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
             
         if AUTO_DELETE_MODE == True:
