@@ -10,6 +10,7 @@ from validators import domain
 from Script import script
 from plugins.dbusers import db
 from pyrogram import Client, filters, enums
+from pyrogram.enums import ChatAction  # 🌟 ChatAction import kiya gaya hai
 from plugins.users_api import get_user, update_user_info
 from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
@@ -51,6 +52,10 @@ async def start(client, message):
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
     
     if len(message.command) != 2:
+        # 🌟 Start message se pehle Typing animation
+        await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+        await asyncio.sleep(1)
+        
         buttons = [[
             InlineKeyboardButton('💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ʏᴏᴜᴛᴜʙᴇ ᴄʜᴀɴɴᴇʟ', url='https://youtube.com/@Tech_VJ')
             ],[
@@ -81,7 +86,10 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
-            # 🌟 UPDATED: Midnight text ko hata kar hourly basis access dynamic message set kar diya hai
+            # 🌟 Successful verification alert par Typing effect
+            await client.send_chat_action(message.chat.id, ChatAction.TYPING)
+            await asyncio.sleep(1)
+            
             await message.reply_text(
                 text=f"<b>Hey {message.from_user.mention}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>",
                 protect_content=True
@@ -174,9 +182,13 @@ async def start(client, message):
                         reply_markup = InlineKeyboardMarkup(button)
                     else:
                         reply_markup = None
-                        
+                    
+                    # 🌟 Batch ke andar har file copy hone se pehle file sending action show hoga
+                    await client.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
                     msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
                 else:
+                    # 🌟 Agar normal text message hai to typing status show karega
+                    await client.send_chat_action(message.chat.id, ChatAction.TYPING)
                     msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
                 
                 filesarr.append(msg_out)
@@ -254,8 +266,14 @@ async def start(client, message):
             else:
                 reply_markup = None
                 
+            # 🌟 Single File delivery se pehle "sending a file..." ka status trigger hoga
+            await client.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+            await asyncio.sleep(1) # Ek chota human-like pause status ke baad
+            
             del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
         else:
+            # 🌟 Agar non-media message copy ho raha ho to Typing trigger hoga
+            await client.send_chat_action(message.chat.id, ChatAction.TYPING)
             del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
             
         if AUTO_DELETE_MODE == True:
