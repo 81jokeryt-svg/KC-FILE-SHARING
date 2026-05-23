@@ -15,7 +15,7 @@ import base64
 # Users ki dynamic state track karne ke liye dictionaries
 AWAITING_CONTENT = {}
 BATCH_STATE = {}  # Format: {user_id: {"step": 1, "first_chat": ..., "first_msg": ...}}
-CUSTOM_BATCH_STATE = {}  # 🆕 Format: {user_id: [msg_id1, msg_id2, ...]}
+CUSTOM_BATCH_STATE = {}  # 🆕 Track files as well as last counter message ID
 
 async def allowed(_, __, message):
     if PUBLIC_FILE_STORE:
@@ -56,15 +56,31 @@ async def handle_conversations(bot, message):
         if not (message.document or message.video or message.audio or message.photo or message.text):
             return
             
-        # Pehle is file/message ko direct DB_CHANNEL me copy karte hain safe rakhne ke liye
         try:
+            # 🆕 Pichla bheja hua counter message delete karte hain agar exist karta hai
+            if CUSTOM_BATCH_STATE[user_id]["last_msg_id"]:
+                try:
+                    await bot.delete_messages(chat_id=message.chat.id, message_ids=CUSTOM_BATCH_STATE[user_id]["last_msg_id"])
+                except Exception:
+                    pass # Agar message pehle se manual delete ho chuka ho, toh code crash na ho
+
+            # Pehle is file/message ko direct DB_CHANNEL me copy karte hain safe rakhne ke liye
             copied_msg = await message.copy(DB_CHANNEL)
-            # Hum save kiye gaye message ki ID store karenge JSON generation ke liye
-            CUSTOM_BATCH_STATE[user_id].append({"channel_id": DB_CHANNEL, "msg_id": copied_msg.id})
             
-            total_saved = len(CUSTOM_BATCH_STATE[user_id])
-            await message.reply_text(f"<b>📥 File #{total_saved} Custom Batch me add ho gayi hai!</b>\n"
-                                     "Aur files bhejein ya complete karne ke liye /cdone likhein.")
+            # Hum save kiye gaye message ki ID store karenge JSON generation ke liye
+            CUSTOM_BATCH_STATE[user_id]["files"].append({"channel_id": DB_CHANNEL, "msg_id": copied_msg.id})
+            
+            total_saved = len(CUSTOM_BATCH_STATE[user_id]["files"])
+            
+            # Naya updated dynamic counter message bhejte hain
+            status_msg = await message.reply_text(
+                f"<b>📥 𝖥𝖨𝖫𝖤 #{total_saved} 𝖠𝖣𝖣𝖤𝖣 𝖲𝖴𝖢𝖢𝖤𝖲𝖲𝖥𝖴𝖫𝖫𝖸!</b>\n\n"
+                "<i>Aur files bhejte rahiye... Jab poora ho jaye toh /cdone send karne link nikal lein.</i>"
+            )
+            
+            # Naye status message ki ID ko update kar dete hain taaki agle step par ise wipe kiya ja sake
+            CUSTOM_BATCH_STATE[user_id]["last_msg_id"] = status_msg.id
+
         except Exception as e:
             await message.reply_text(f"❌ **Error while saving file:** {e}")
             
@@ -183,11 +199,10 @@ async def handle_conversations(bot, message):
             message.stop_propagation()
 
 
-# 🛠️ 2. DIRECT MEDIA GENERATOR (Bina kisi command ke direct media file aane par - Sirf tab chalega jab koi active session na ho)
+# 🛠️ 2. DIRECT MEDIA GENERATOR
 @Client.on_message((filters.document | filters.video | filters.audio | filters.photo) & filters.private & filters.create(allowed))
 async def incoming_gen_link(bot, message):
     user_id = message.from_user.id
-    # Agar user custom batch mode me hai, to direct post link nahi banna chahiye, isliye validation check
     if user_id in CUSTOM_BATCH_STATE:
         return
         
@@ -217,7 +232,7 @@ async def gen_link_s(bot, message):
     await message.reply_text("<b>SEND ME YOUR MESSAGE WHICH YOU WANT TO STORE</b>")
 
 
-# 🛠️ 4. COMMAND HANDLER: /batch (CONVERSATION MODE - CHANNEL RANGE MATCHER)
+# 🛠️ 4. COMMAND HANDLER: /batch
 @Client.on_message(filters.command(['batch']) & filters.private & filters.create(allowed))
 async def gen_link_batch(bot, message):
     user_id = message.from_user.id
@@ -238,17 +253,20 @@ async def gen_link_batch(bot, message):
 async def start_custom_batch(bot, message):
     user_id = message.from_user.id
     
-    # Baki saare active states clear karna
     if user_id in AWAITING_CONTENT: AWAITING_CONTENT[user_id] = False
     if user_id in BATCH_STATE: del BATCH_STATE[user_id]
     
-    # Custom batch list initialize karna
-    CUSTOM_BATCH_STATE[user_id] = []
+    # 🆕 Structure converted to dict to track "last_msg_id" and "files" array separate
+    CUSTOM_BATCH_STATE[user_id] = {
+        "last_msg_id": None,
+        "files": []
+    }
     
     await message.reply_text(
         "<b>✨ ᴄᴜsᴛᴏᴍ ʙᴀᴛᴄʜ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ! ✨\n\n"
         "Ab aap jo bhi files (Videos, Documents, Photos, Text) yahan send karenge, "
-        "wo sab is batch me ek ke baad ek save hoti jayengi.\n\n"
+        "wo sab is batch me ek ke baad ek save hoti jayengi.\n"
+        "Bot purane counter alerts ko background me clear karta chalega taaki workspace clean rahe.\n\n"
         "Jab aap saari files send kar dein, toh link generate karne ke liye /cdone command bhein.</b>"
     )
 
@@ -262,8 +280,16 @@ async def complete_custom_batch(bot, message):
     if user_id not in CUSTOM_BATCH_STATE:
         return await message.reply_text("❌ **Aapka koi bhi Custom Batch session active nahi hai!** Pehle /cbatch start karein.")
         
-    outlist = CUSTOM_BATCH_STATE[user_id]
+    outlist = CUSTOM_BATCH_STATE[user_id]["files"]
+    last_msg_id = CUSTOM_BATCH_STATE[user_id]["last_msg_id"]
     
+    # Final step processing par aakhiri counter message ko bhi interface se completely clean kar dete hain
+    if last_msg_id:
+        try:
+            await bot.delete_messages(chat_id=message.chat.id, message_ids=last_msg_id)
+        except:
+            pass
+        
     if not outlist:
         del CUSTOM_BATCH_STATE[user_id]
         return await message.reply_text("⚠️ **Aapne batch me koi bhi file send nahi ki thi.** Session closed.")
@@ -271,16 +297,13 @@ async def complete_custom_batch(bot, message):
     sts = await message.reply_text("<b>Processing your custom batch... 🚀</b>")
     
     try:
-        # Same original filestore structure me JSON banana
         file_name = f"batchmode_{user_id}.json"
         with open(file_name, "w+") as out:
             json.dump(outlist, out)
             
-        # JSON file ko DB_CHANNEL me bhejna jaise original code karta hai
         post = await bot.send_document(DB_CHANNEL, file_name, file_name="Batch.json", caption="⚠️ Custom Batch Generated For Filestore.")
         os.remove(file_name)
         
-        # Batch data clear karna session se
         del CUSTOM_BATCH_STATE[user_id]
         
         string = str(post.id)
