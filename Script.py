@@ -145,7 +145,11 @@ Nᴀᴍᴇ - {}</b>
 
 
 
-    NOT_VERIFIED_TXT = "<b>You are not verified !\nKindly verify to continue !</b>"
+    NOT_VERIFIED_TXT = """<b><blockquote>ʜᴇʏ {},
+
+ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴠᴇʀɪғɪᴇᴅ ᴛᴏᴅᴀʏ, ᴘʟᴇᴀꜱᴇ ᴄʟɪᴄᴋ ᴏɴ ᴠᴇʀɪғʏ & ɢᴇᴛ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇꜱꜱ ғᴏʀ ᴛɪʟʟ ɴᴇxᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ
+
+#ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ:- 1/1</b></blockquote>"""
 
     VERIFIED_SUCCESS_TXT = "<b>Hey {}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>"
 
