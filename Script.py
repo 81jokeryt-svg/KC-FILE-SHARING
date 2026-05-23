@@ -143,6 +143,12 @@ Nᴀᴍᴇ - {}</b>
 🌐 Tɪᴍᴇᴢᴏɴᴇ : <code>Asia/Kolkata</code>
 🛠️ Bᴜɪʟᴅ Sᴛᴀᴛᴜs: <code>v2.7.1 [ Sᴛᴀʙʟᴇ ]</code></b>"""
 
+
+
+    NOT_VERIFIED_TXT = "<b>You are not verified !\nKindly verify to continue !</b>"
+
+    VERIFIED_SUCCESS_TXT = "<b>Hey {}, You are successfully verified !\nNow you have unlimited access for all files till your verification validity period.</b>"
+
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
