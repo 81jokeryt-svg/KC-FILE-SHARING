@@ -1,6 +1,3 @@
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
 
 
 class script(object):
@@ -145,15 +142,15 @@ Nᴀᴍᴇ - {}</b>
 
 
 
-    NOT_VERIFIED_TXT = """<b><blockquote>ʜᴇʏ {},
+    NOT_VERIFIED_TXT = """<b><blockquote>👋 ʜᴇʏ {},
 
 ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴠᴇʀɪғɪᴇᴅ ᴛᴏᴅᴀʏ, ᴘʟᴇᴀꜱᴇ ᴄʟɪᴄᴋ ᴏɴ ᴠᴇʀɪғʏ & ɢᴇᴛ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇꜱꜱ ғᴏʀ ᴛɪʟʟ ɴᴇxᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ
 
 #ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ:- 1/1</b></blockquote>"""
 
-    VERIFIED_SUCCESS_TXT = """<b>🎉 ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴꜱ {},
+    VERIFIED_SUCCESS_TXT = """<b><blockquote>🎉 ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴꜱ {},
 
 ✅ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ 1/1 ᴄᴏᴍᴘʟᴇᴛᴇᴅ!
 
-ʏᴏᴜ ɴᴏᴡ ʜᴀᴠᴇ ᴀᴄᴄᴇꜱꜱ ᴜɴᴛɪʟ ᴛʜᴇ ɴᴇxᴛ ᴄʜᴇᴄᴋᴘᴏɪɴᴛ.</b>"""
+ʏᴏᴜ ɴᴏᴡ ʜᴀᴠᴇ ᴀᴄᴄᴇꜱꜱ ᴜɴᴛɪʟ ᴛʜᴇ ɴᴇxᴛ ᴄʜᴇᴄᴋᴘᴏɪɴᴛ.</b></blockquote>"""
 
