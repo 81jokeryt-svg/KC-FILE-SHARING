@@ -105,9 +105,8 @@ async def start(client, message):
         try:
             if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
                 btn = [[
-                    InlineKeyboardButton("Verify", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start="))
-                ],[
-                    InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
+                    InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
+                    InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
                 # 🌟 Not Verified Warning Message with 5 min auto-delete timer
                 not_verified_msg = await message.reply_text(
@@ -120,7 +119,7 @@ async def start(client, message):
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
             
-        sts = await message.reply("<b>PLEASE WAIT... ⏳</b>")
+        sts = await message.reply("<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆𝙰𝙸𝚃</b>")
         file_id = data.split("-", 1)[1]
         msgs = BATCH_FILES.get(file_id)
         
@@ -218,9 +217,8 @@ async def start(client, message):
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
     if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
         btn = [[
-            InlineKeyboardButton("Verify", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start="))
-                ],[
-            InlineKeyboardButton("How To Open Link & Verify", url=VERIFY_TUTORIAL)
+            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
+            InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
         ]]
         # 🌟 Single link verification warning message with 5 min auto-delete timer
         not_verified_msg = await message.reply_text(
