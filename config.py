@@ -17,7 +17,7 @@ API_ID = int(environ.get("API_ID", ""))
 API_HASH = environ.get("API_HASH", "")
 BOT_TOKEN = environ.get("BOT_TOKEN", "")
 
-PICS = (environ.get('PICS', 'https://graph.org/file/ce1723991756e48c35aa1.jpg')).split() # Bot Start Picture
+PICS = (environ.get('PICS', 'https://i.ibb.co/Pv9w1khk/photo-2026-05-23-15-55-01-7643116408875778072.jpg https://i.ibb.co/jZ6zGxpp/photo-2026-05-23-15-55-21-7643116464710352900.jpg https://i.ibb.co/NnC4Ht8N/photo-2026-05-23-15-55-34-7643116516249960464.jpg https://i.ibb.co/FLnGTrf1/photo-2026-05-23-15-55-46-7643116567789568016.jpg')).split() # Bot Start Picture
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '5898522531').split()]
 BOT_USERNAME = environ.get("BOT_USERNAME", "usekaluubot") # without @
 PORT = environ.get("PORT", "8080")
