@@ -36,12 +36,12 @@ async def get_main_panel_layout(settings):
     )
     
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔐 VERIFICATION & SWITCH MENU", callback_data="adm_sub_verify")],
-        [InlineKeyboardButton("⏱️ AUTO DELETE MENU", callback_data="adm_sub_delete")],
-        [InlineKeyboardButton("🎨 START PAGE CUSTOMIZER", callback_data="adm_sub_start_page")],
-        [InlineKeyboardButton("👑 PREMIUM USER MENU", callback_data="adm_sub_premium")],
-        [InlineKeyboardButton(f"🛡️ PROTECT CONTENT: {p_status}", callback_data="adm_toggle_protect")],
-        [InlineKeyboardButton("❌ Close Panel", callback_data="close_data")]
+        [InlineKeyboardButton("🔐 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_sub_verify")],
+        [InlineKeyboardButton("⏱️ 𝗔𝗨𝗧𝗢 𝗗𝗘𝗟𝗘𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="adm_sub_delete")],
+        [InlineKeyboardButton("🎨 𝗦𝗧𝗔𝗥𝗧 𝗠𝗘𝗡𝗨", callback_data="adm_sub_start_page")],
+        [InlineKeyboardButton("👑 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗠𝗘𝗡𝗨", callback_data="adm_sub_premium")],
+        [InlineKeyboardButton(f"🛡️ 𝗣𝗥𝗢𝗧𝗘𝗖𝗧 𝗖𝗢𝗡𝗧𝗘𝗡𝗧: {p_status}", callback_data="adm_toggle_protect")],
+        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
 
