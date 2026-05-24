@@ -6,7 +6,8 @@ import logging, asyncio, os, re, random, pytz, aiohttp, requests, string, json, 
 from datetime import date, datetime
 from config import VERIFY_EXPIRE_TIME
 from shortzy import Shortzy
-from dbusers import db  # 🌟 NEW: Database settings load karne ke liye
+from plugins.dbusers import db
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
