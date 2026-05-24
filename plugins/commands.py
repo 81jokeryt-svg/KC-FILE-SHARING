@@ -16,6 +16,7 @@ import json
 import base64
 from urllib.parse import quote_plus
 from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
+
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
@@ -50,6 +51,8 @@ def formate_file_name(file_name):
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     username = client.me.username
+    user_id = message.from_user.id
+    
     # Dynamic settings fetch kar rahe hain sabse pehle
     settings = await db.get_settings()
     is_verify_mode = settings.get("verify_mode", True)
@@ -58,16 +61,19 @@ async def start(client, message):
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
     
-    # 🌟 NEW: Dynamic Start Photo aur Text settings handle karna
+    # 🌟 PREMIUM CHECK: Database se user premium status check kar rahe hain
+    is_premium = await db.is_user_premium(user_id) if hasattr(db, 'is_user_premium') else False
+    
+    # Dynamic Start Photo aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
     db_start_text = settings.get("custom_start_text", None)
     
     # Agar DB mein custom text hai toh wo use hoga, nahi toh script wala default text
     start_caption = db_start_text if db_start_text else script.START_TXT
 
-    if not await db.is_user_exist(message.from_user.id):
-        await db.add_user(message.from_user.id, message.from_user.first_name)
-        await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
+    if not await db.is_user_exist(user_id):
+        await db.add_user(user_id, message.from_user.first_name)
+        await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(user_id, message.from_user.mention))
     
     if len(message.command) != 2:
         await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
@@ -87,7 +93,7 @@ async def start(client, message):
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
         
-        # 🌟 FIX: Photo aur Message donon dynamic ho gaye hain
+        # Photo aur Message donon dynamic ho gaye hain
         if start_photo:
             await message.reply_photo(
                 photo=start_photo,
@@ -95,10 +101,6 @@ async def start(client, message):
                 reply_markup=reply_markup
             )
         else:
-            # Agar start_photo key None hai ya empty hai, toh photo automatic REMOVE ho jayegi aur simple text jayega
-            if not start_photo and PICS:
-                # Fallback backup agar aap config ke PICS se dikhana chahein toh, warna direct text:
-                pass
             await message.reply_text(
                 text=start_caption.format(message.from_user.mention, me.mention),
                 reply_markup=reply_markup,
@@ -112,7 +114,7 @@ async def start(client, message):
     if data.split("-", 1)[0] == "verify":
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
-        if str(message.from_user.id) != str(userid):
+        if str(user_id) != str(userid):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=is_protect)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
@@ -132,9 +134,10 @@ async def start(client, message):
     # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
-            if not await check_verification(client, message.from_user.id) and is_verify_mode == True:
+            # 🌟 MODIFIED: Agar user premium hai toh token check bypass ho jayega
+            if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
                 btn = [[
-                    InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
+                    InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
                     InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
                 not_verified_msg = await message.reply_text(
@@ -214,16 +217,16 @@ async def start(client, message):
                         reply_markup = None
                     
                     await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
-                    msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=is_protect, reply_markup=reply_markup)
+                    msg_out = await info.copy(chat_id=user_id, caption=f_caption, protect_content=is_protect, reply_markup=reply_markup)
                 else:
                     await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-                    msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect)
+                    msg_out = await info.copy(chat_id=user_id, protect_content=is_protect)
                 
                 filesarr.append(msg_out)
                 await asyncio.sleep(1)
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect)
+                msg_out = await info.copy(chat_id=user_id, protect_content=is_protect)
                 filesarr.append(msg_out)
             except Exception as e:
                 logger.error(f"Error copying batch sub-file: {e}")
@@ -232,7 +235,7 @@ async def start(client, message):
         await sts.delete()
         
         if is_autodelete == True:
-            k = await client.send_message(chat_id=message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
+            k = await client.send_message(chat_id=user_id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
             for x in filesarr:
                 try:
@@ -246,9 +249,10 @@ async def start(client, message):
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    if not await check_verification(client, message.from_user.id) and is_verify_mode == True:
+    # 🌟 MODIFIED: Premium check for single files verification bypass
+    if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
-            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
+            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
             InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
         not_verified_msg = await message.reply_text(
@@ -300,13 +304,13 @@ async def start(client, message):
             await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
             await asyncio.sleep(1) 
             
-            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
+            del_msg = await msg.copy(chat_id=user_id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
         else:
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protect)
+            del_msg = await msg.copy(chat_id=user_id, protect_content=is_protect)
             
         if is_autodelete == True:
-            k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
+            k = await client.send_message(chat_id = user_id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
             try:
                 await del_msg.delete()
@@ -346,7 +350,7 @@ async def base_site_handler(client, m: Message):
         return await m.reply(text=text, disable_web_page_preview=True)
     elif len(cmd) == 2:
         base_site = cmd[1].strip()
-        if base_site == "None" or base_site == None:
+        if base_site == "None" or base_site is None:
             await update_user_info(user_id, {"base_site": None})
             return await m.reply("<b>Base Site updated successfully</b>")
             
@@ -370,7 +374,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
-        # 🌟 FIX: Agar start_photo hai tabhi edit_message_media chalega, nahi toh purani photo text mein convert ho jayegi bina error ke
         if start_photo:
             try:
                 await client.edit_message_media(
