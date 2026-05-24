@@ -85,11 +85,12 @@ async def get_delete_menu_layout(settings):
     return text, keyboard
 
 # -------------------------------------------------------------
-# 4. START PAGE SUB-MENU LAYOUT (NEWLY ADDED)
+# 4. START PAGE SUB-MENU LAYOUT (FIXED KEY NAMES)
 # -------------------------------------------------------------
 async def get_start_page_menu_layout(settings):
     has_photo = "🟢 Set (Custom)" if settings.get("start_photo") else "🔴 Not Set (Text Only)"
-    has_text = "🟢 Custom Text Enabled" if settings.get("start_text") else "⚪ Default Text Enabled"
+    # 🌟 FIX: start_text ki jagah custom_start_text fetch kiya taaki start.py se match kare
+    has_text = "🟢 Custom Text Enabled" if settings.get("custom_start_text") else "⚪ Default Text Enabled"
     
     text = (
         "🎨 **START PAGE CONFIGURATION**\n"
@@ -204,7 +205,8 @@ async def admin_callback(client, query):
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
-        await db.update_setting("start_text", txt_prompt.text.strip())
+        # 🌟 FIX: start_text ko custom_start_text se replace kiya database update ke liye
+        await db.update_setting("custom_start_text", txt_prompt.text.strip())
         success_msg = await client.send_message(chat_id, "✅ **Start page message text update ho gaya!**")
         await asyncio.sleep(3)
         await success_msg.delete()
@@ -216,7 +218,8 @@ async def admin_callback(client, query):
         return
 
     elif action == "reset_start_txt":
-        await db.update_setting("start_text", None) # None karne par default state par chala jayega
+        # 🌟 FIX: custom_start_text ko reset karega
+        await db.update_setting("custom_start_text", None) 
         await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
         settings = await db.get_settings()
         text, keyboard = await get_start_page_menu_layout(settings)
@@ -239,7 +242,6 @@ async def admin_callback(client, query):
             await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.", reply_markup=back_keyboard)
             return
             
-        # Extract highest quality photo file_id string
         file_id = img_prompt.photo.file_id
         await db.update_setting("start_photo", file_id)
         
@@ -254,7 +256,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "remove_start_img":
-        await db.update_setting("start_photo", None) # Database me clear control string save karega
+        await db.update_setting("start_photo", None) 
         await query.answer("Start image successfully remove ho gayi! (Text-Only Mode Enabled) 🗑️", show_alert=True)
         settings = await db.get_settings()
         text, keyboard = await get_start_page_menu_layout(settings)
