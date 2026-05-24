@@ -4,19 +4,24 @@
 
 import logging, asyncio, os, re, random, pytz, aiohttp, requests, string, json, http.client, time
 from datetime import date, datetime
-from config import SHORTLINK_API, SHORTLINK_URL, VERIFY_EXPIRE_TIME
+from config import VERIFY_EXPIRE_TIME
 from shortzy import Shortzy
+from dbusers import db  # 🌟 NEW: Database settings load karne ke liye
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 TOKENS = {}
-VERIFIED = {}
 
 async def get_verify_shorted_link(link):
-    if SHORTLINK_URL == "api.shareus.io":
-        url = f'https://{SHORTLINK_URL}/easy_api'
+    # 🌟 NEW: Render config ki jagah Database se live values uthayega
+    settings = await db.get_settings()
+    shortlink_url = settings.get("shortlink_url", "linkshortify.com")
+    shortlink_api = settings.get("shortlink_api", "9d9199caec2c2e30e0670f1549ffa1a316caa541")
+
+    if shortlink_url == "api.shareus.io":
+        url = f'https://{shortlink_url}/easy_api'
         params = {
-            "key": SHORTLINK_API,
+            "key": shortlink_api,
             "link": link,
         }
         try:
@@ -28,13 +33,13 @@ async def get_verify_shorted_link(link):
             logger.error(e)
             return link
     else:
-  #      response = requests.get(f"https://{SHORTLINK_URL}/api?api={SHORTLINK_API}&url={link}")
- #       data = response.json()
-  #      if data["status"] == "success" or rget.status_code == 200:
-   #         return data["shortenedUrl"]
-        shortzy = Shortzy(api_key=SHORTLINK_API, base_site=SHORTLINK_URL)
-        link = await shortzy.convert(link)
-        return link
+        try:
+            shortzy = Shortzy(api_key=shortlink_api, base_site=shortlink_url)
+            link = await shortzy.convert(link)
+            return link
+        except Exception as e:
+            logger.error(f"Shortener Error: {e}")
+            return link
 
 async def check_token(bot, userid, token):
     user = await bot.get_users(userid)
@@ -60,20 +65,27 @@ async def get_token(bot, userid, link):
 async def verify_user(bot, userid, token):
     user = await bot.get_users(userid)
     TOKENS[user.id] = {token: True}
-    # 🌟 UPDATED: Date ki jagah ab current timestamp save hoga seconds me
-    VERIFIED[user.id] = time.time()
+    
+    # 🌟 UPDATED: Memory ki jagah user ka verification time MongoDB database me save hoga permanent
+    current_time = int(time.time())
+    await db.update_verify_time(user.id, current_time)
 
 async def check_verification(bot, userid):
     user = await bot.get_users(userid)
-    if user.id in VERIFIED.keys():
-        # 🌟 UPDATED: Ab check hoga ki verification ko expire hue kitna time hua
-        last_verified = VERIFIED[user.id]
-        if (time.time() - last_verified) > VERIFY_EXPIRE_TIME:
-            return False  # Verification Expire ho gaya
-        else:
-            return True   # Verification Valid hai
+    
+    # 🌟 NEW: Admin panel se check karega ki VERIFY_MODE On hai ya Off
+    settings = await db.get_settings()
+    if not settings.get("verify_mode", True):
+        return True  # Agar Admin ne Verification Off kar rakhi hai, to user direct pass ho jayega
+
+    # 🌟 UPDATED: Database se user ka last verified timestamp nikalenge
+    last_verified = await db.get_verify_time(user.id)
+    
+    if last_verified == 0:
+        return False # User ne kabhi verify nahi kiya
+        
+    # Ab check hoga ki token valid hai ya expire ho chuka hai
+    if (int(time.time()) - last_verified) > VERIFY_EXPIRE_TIME:
+        return False  # Verification Expire ho gaya
     else:
-        return False
-
-
-# utils.py
+        return True   # Verification Valid hai
