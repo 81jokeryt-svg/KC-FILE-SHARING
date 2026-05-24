@@ -134,10 +134,18 @@ async def start(client, message):
         return
 
     # 2. HANDLE BATCH LINKS
+        
     elif data.split("-", 1)[0] == "BATCH":
-        try:
-            # 🌟 MODIFIED BYPASS: Agar user premium hai toh token check bypass ho jayega
-            if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
+        # --- NEW PREMIUM/VERIFY GATEKEEPER START ---
+        # 1. प्रीमियम चेक करें
+        is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
+        
+        if not is_user_premium:
+            if settings.get("premium_mode", False):
+                await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
+                return 
+            if is_verify_mode == True and not await check_verification(client, user_id):
+                
                 btn = [[
                     InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
                     InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
@@ -275,22 +283,25 @@ async def start(client, message):
                 await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
             except:
                 pass
-        return
 
-    # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
-        btn = [[
-            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
-            InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
-                ]]
-        not_verified_msg = await message.reply_text(
-            text=script.NOT_VERIFIED_TXT.format(message.from_user.mention),
-            protect_content=is_protect,
-            reply_markup=InlineKeyboardMarkup(btn)
-        )
-        asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
-        return
-
+    is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
+    
+    if not is_user_premium:
+        if settings.get("premium_mode", False):
+            await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nआपको यह फाइल एक्सेस करने के लिए प्रीमियम मेंबर होना होगा।")
+            return 
+        if is_verify_mode == True and not await check_verification(client, user_id):
+            btn = [[
+                InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
+                InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
+            ]]
+            not_verified_msg = await message.reply_text(
+                text=script.NOT_VERIFIED_TXT.format(message.from_user.mention),
+                protect_content=is_protect,
+                reply_markup=InlineKeyboardMarkup(btn)
+            )
+            asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
+            return
     try:
         decoded_bytes = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
         decoded_str = decoded_bytes.decode("ascii")
