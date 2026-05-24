@@ -1,14 +1,13 @@
-# Don't Remove Credit @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
 import asyncio
 import re
+import logging
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
 from plugins.dbusers import *
 from utils import *
+
+logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------
 # HELPER VALIDATION FUNCTIONS
@@ -226,7 +225,7 @@ async def admin_callback(client, query):
         await query.message.edit_text(text, reply_markup=keyboard)
 
     # =============================================================
-    # --- PREMIUM CONTROL ACTIONS (STEP-BY-STEP FLOW) ---
+    # --- PREMIUM CONTROL ACTIONS (WITH AUTOMATIC USER NOTIFICATIONS) ---
     # =============================================================
     elif action == "add_prem":
         await query.message.delete()
@@ -279,6 +278,21 @@ async def admin_callback(client, query):
             f"📅 **Expiry Time:** `{formatted_expiry}`\n\n"
             f"*Yeh user expiry date aate hi automatic list se remove ho jayega.*"
         )
+        
+        # 🔔 LIVE NOTIFICATION TO USER: Jab premium add hoga tab notification jayega
+        try:
+            await client.send_message(
+                chat_id=target_id,
+                text=(
+                    f"🎉 **🎉 CONGRATULATIONS !! 🎉**\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Aapke Account par **{premium_days} Dino** ke liye **👑 PREMIUM ACCESS** active kar diya gaya hai!\n\n"
+                    f"📅 **Expiry Date:** `{formatted_expiry}`\n\n"
+                    f"✨ **Benefits:** Ab aapko bot me koi bhi file download karte waqt **Shortener Ads ya Verification karne ki zarurat nahi padegi**! Aapki saari files seedhe bypass ho jayengi. Enjoy!"
+                )
+            )
+        except Exception as e:
+            logger.error(f"Could not send premium activation alert to {target_id}: {e}")
             
         await asyncio.sleep(4)
         await success_msg.delete()
@@ -312,6 +326,20 @@ async def admin_callback(client, query):
         
         if is_removed:
             success_msg = await client.send_message(chat_id, f"🗑️ **User ID** `{target_id}` **Premium List se successfully hata di gayi!**")
+            
+            # 🔔 LIVE NOTIFICATION TO USER: Jab premium cancel/remove hoga tab alert jayega
+            try:
+                await client.send_message(
+                    chat_id=target_id,
+                    text=(
+                        f"⚠️ **PREMIUM PLAN EXPIRED / REMOVED**\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"Aapke account se **👑 Premium Access** ko admin dwara remove kar diya gaya hai ya aapka plan expire ho gaya hai.\n\n"
+                        f"🔄 Files pane ke liye ab aapko normal users ki tarah verification process complete karna hoga."
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Could not send premium removal alert to {target_id}: {e}")
         else:
             success_msg = await client.send_message(chat_id, f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
             
