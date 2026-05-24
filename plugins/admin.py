@@ -97,13 +97,15 @@ async def get_delete_menu_layout(settings):
 async def get_start_page_menu_layout(settings):
     has_photo = "🟢 Set (Custom)" if settings.get("start_photo") else "🔴 Not Set (Text Only)"
     has_text = "🟢 Custom Text Enabled" if settings.get("custom_start_text") else "⚪ Default Text Enabled"
+    s_status = "🟢 ON (Blurred Image)" if settings.get("start_spoiler", False) else "🔴 OFF (Clear Image)"
     
     text = (
         "🎨 **START PAGE CONFIGURATION**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🖼️ **Start Photo Status:** `{has_photo}`\n"
-        f"📝 **Start Text Status:** `{has_text}`\n\n"
-        "Aap niche diye gaye button se live /start command ke message aur photo badal sakte hain."
+        f"📝 **Start Text Status:** `{has_text}`\n"
+        f"⚠️ **Spoiler Status:** `{s_status}`\n\n"
+        "Aap niche diye gaye button se live /start command ke message, photo aur spoiler toggle badal sakte hain."
     )
     
     keyboard = InlineKeyboardMarkup([
@@ -111,6 +113,7 @@ async def get_start_page_menu_layout(settings):
          InlineKeyboardButton("🗑️ Reset Start Text", callback_data="adm_reset_start_txt")],
         [InlineKeyboardButton("🖼️ Set Start Photo", callback_data="adm_set_start_img"), 
          InlineKeyboardButton("🗑️ Remove Start Photo", callback_data="adm_remove_start_img")],
+        [InlineKeyboardButton(f"🎭 Spoiler Mode: {'🟢 ON' if settings.get('start_spoiler', False) else '🔴 OFF'}", callback_data="adm_toggle_spoiler")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
     ])
     return text, keyboard
@@ -118,24 +121,28 @@ async def get_start_page_menu_layout(settings):
 # -------------------------------------------------------------
 # 5. PREMIUM USER MANAGEMENT SUB-MENU LAYOUT
 # -------------------------------------------------------------
-async def get_premium_menu_layout():
+async def get_premium_menu_layout(settings):
     try:
         users_list = await db.get_all_premium_users()
         total_premium = len(users_list)
     except Exception:
         total_premium = 0
 
+    current_buy_link = settings.get("premium_buy_link", "https://t.me/HDFILM0900_BOT")
+
     text = (
         "👑 **PREMIUM USER CONFIGURATION**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 **Total Premium Users:** `{total_premium}`\n\n"
-        "Aap niche diye gaye inline buttons ka use karke kisi bhi user ki Telegram UID (Number baji) se use Premium add ya remove kar sakte hain."
+        f"👥 **Total Premium Users:** `{total_premium}`\n"
+        f"🔗 **Current Buy Link:** `{current_buy_link}`\n\n"
+        "Aap niche diye gaye inline buttons ka use karke kisi bhi user ki Telegram UID se use Premium add/remove kar sakte hain aur 'Buy Premium' Link setup kar sakte hain."
     )
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Add Premium ID", callback_data="adm_add_prem"),
          InlineKeyboardButton("🗑️ Remove Premium ID", callback_data="adm_rem_prem")],
         [InlineKeyboardButton("📜 View Premium Users", callback_data="adm_list_prem")],
+        [InlineKeyboardButton("🔗 Set Buy Premium Link", callback_data="adm_set_buy_link")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
     ])
     return text, keyboard
@@ -196,7 +203,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "sub_premium":
-        text, keyboard = await get_premium_menu_layout()
+        text, keyboard = await get_premium_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
 
@@ -205,7 +212,6 @@ async def admin_callback(client, query):
         new_val = not settings.get("verify_mode", True)
         await db.update_setting("verify_mode", new_val)
         
-        # 🔄 SWITCH MODE LOGIC: Verification ON hote hi Premium Mode automatically OFF ho jayega
         if new_val == True:
             await db.update_setting("premium_mode", False)
             await query.answer("Verification Mode ON & Premium Mode OFF! 🔄", show_alert=True)
@@ -220,7 +226,6 @@ async def admin_callback(client, query):
         new_val = not settings.get("premium_mode", False)
         await db.update_setting("premium_mode", new_val)
         
-        # 🔄 SWITCH MODE LOGIC: Premium Mode ON hote hi Verification automáticamente OFF ho jayega
         if new_val == True:
             await db.update_setting("verify_mode", False)
             await query.answer("Premium Mode ON & Verification OFF! 👑", show_alert=True)
@@ -249,6 +254,16 @@ async def admin_callback(client, query):
             keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
 
+    # 🌟 NEW TOGGLE ACTION: START PHOTO SPOILER BUTTON
+    elif action == "toggle_spoiler":
+        new_val = not settings.get("start_spoiler", False)
+        await db.update_setting("start_spoiler", new_val)
+        await query.answer(f"Spoiler Mode {'Enabled 🟢' if new_val else 'Disabled 🔴'}")
+        settings = await db.get_settings()
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
+        return
+
     # =============================================================
     # --- PREMIUM CONTROL ACTIONS ---
     # =============================================================
@@ -259,7 +274,8 @@ async def admin_callback(client, query):
         
         if id_prompt.text.strip() == "/cancel":
             await id_prompt.delete()
-            text, keyboard = await get_premium_menu_layout()
+            settings = await db.get_settings()
+            text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
@@ -275,7 +291,8 @@ async def admin_callback(client, query):
         if days_prompt.text.strip() == "/cancel":
             await id_prompt.delete()
             await days_prompt.delete()
-            text, keyboard = await get_premium_menu_layout()
+            settings = await db.get_settings()
+            text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
@@ -291,7 +308,7 @@ async def admin_callback(client, query):
         
         success_msg = await client.send_message(
             chat_id, 
-            f"👑 **ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴛɪᴠᴀᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ**\n"
+            f"👑 **👑 PREMIUM ACTIVATED SUCCESSFULLY**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 **User ID:** `{target_id}`\n"
             f"⏱️ **Duration:** `{premium_days} Days`\n"
@@ -318,7 +335,8 @@ async def admin_callback(client, query):
         await id_prompt.delete()
         await days_prompt.delete()
         
-        text, keyboard = await get_premium_menu_layout()
+        settings = await db.get_settings()
+        text, keyboard = await get_premium_menu_layout(settings)
         await client.send_message(chat_id, text, reply_markup=keyboard)
         return
 
@@ -329,7 +347,8 @@ async def admin_callback(client, query):
         
         if id_prompt.text.strip() == "/cancel":
             await id_prompt.delete()
-            text, keyboard = await get_premium_menu_layout()
+            settings = await db.get_settings()
+            text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
@@ -363,7 +382,8 @@ async def admin_callback(client, query):
         await success_msg.delete()
         await id_prompt.delete()
         
-        text, keyboard = await get_premium_menu_layout()
+        settings = await db.get_settings()
+        text, keyboard = await get_premium_menu_layout(settings)
         await client.send_message(chat_id, text, reply_markup=keyboard)
         return
 
@@ -382,6 +402,31 @@ async def admin_callback(client, query):
         
         back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_sub_premium")]])
         await query.message.edit_text(text=list_text, reply_markup=back_keyboard)
+        return
+
+    elif action == "set_buy_link":
+        await query.answer()
+        await query.message.delete()
+        link_prompt = await client.ask(chat_id, "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n\n*(Ex: `https://t.me/your_username` ya payment website link. Cancel ke liye /cancel)*", filters=filters.text)
+        
+        if link_prompt.text.strip() == "/cancel":
+            await link_prompt.delete()
+            settings = await db.get_settings()
+            text, keyboard = await get_premium_menu_layout(settings)
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+            
+        new_link = link_prompt.text.strip()
+        await db.update_setting("premium_buy_link", new_link)
+        
+        success_msg = await client.send_message(chat_id, f"✅ **Premium Buy Link updated successfully!**\n\n`{new_link}`")
+        await asyncio.sleep(3)
+        await success_msg.delete()
+        await link_prompt.delete()
+        
+        settings = await db.get_settings()
+        text, keyboard = await get_premium_menu_layout(settings)
+        await client.send_message(chat_id, text, reply_markup=keyboard)
         return
 
     # =============================================================
