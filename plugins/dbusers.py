@@ -1,7 +1,3 @@
-# Don't Remove Credit @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
 import motor.motor_asyncio
 from config import DB_NAME, DB_URI
 from datetime import datetime, timedelta
@@ -99,6 +95,7 @@ class Database:
             default = {
                 "_id": "bot_config",
                 "verify_mode": True,
+                "premium_mode": False, # 👑 Added premium_mode switch into defaults
                 "auto_delete_mode": True,
                 "auto_delete_time": 1800, # Default: 30 minutes
                 "protect_content": False,
