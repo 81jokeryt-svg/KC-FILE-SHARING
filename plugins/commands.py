@@ -20,6 +20,8 @@ from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
+# 🛑 Active batch processing ko cancel karne ke liye global tracker dictionary
+CANCEL_PROCESSING = {}
 
 # Background mein message delete karne ke liye helper function
 async def auto_delete_msg(message, delay=300):
@@ -150,7 +152,20 @@ async def start(client, message):
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
             
-        sts = await message.reply("<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆𝙰𝙸𝚃</b>")
+        # 🔺 Custom Inline Keyboard with CANCEL callback targeted to user_id
+        processing_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("👑 DEVELOPER", url="https://t.me/HDFILM0900_BOT")],
+            [InlineKeyboardButton("❌ CANCEL", callback_data=f"cancel_batch_{user_id}")]
+        ])
+        
+        # State initialize kar rahe hain active process ki
+        CANCEL_PROCESSING[user_id] = False
+
+        sts = await message.reply(
+            text="<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆ait.",
+            reply_markup=processing_keyboard
+        )
+        
         file_id = data.split("-", 1)[1]
         msgs = BATCH_FILES.get(file_id)
         
@@ -177,6 +192,16 @@ async def start(client, message):
             
         filesarr = []
         for msg_item in msgs:
+            # 🛑 Loop chalne ke dauran har baar check hoga ki user ne cancel daba diya ya nahi
+            if CANCEL_PROCESSING.get(user_id, False):
+                await sts.edit("<b>❌ Batch Processing Cancelled By User!</b>")
+                await asyncio.sleep(3)
+                await sts.delete()
+                # Memory cleanup state
+                if user_id in CANCEL_PROCESSING:
+                    del CANCEL_PROCESSING[user_id]
+                return
+
             try:
                 channel_id = int(msg_item.get("channel_id"))
                 msgid = int(msg_item.get("msg_id"))
@@ -234,6 +259,10 @@ async def start(client, message):
                 
         await sts.delete()
         
+        # Safe dictionary cleanup jab loop successfully complete ho jaye
+        if user_id in CANCEL_PROCESSING:
+            del CANCEL_PROCESSING[user_id]
+        
         if is_autodelete == True:
             k = await client.send_message(chat_id=user_id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
@@ -249,7 +278,6 @@ async def start(client, message):
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    # 🌟 MODIFIED BYPASS: Premium check for single files verification bypass
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
             InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
@@ -292,7 +320,7 @@ async def start(client, message):
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ減ᴅ •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪcustomɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
@@ -367,6 +395,16 @@ async def cb_handler(client: Client, query: CallbackQuery):
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
+    # 🛑 CANCEL CALLBACK FUNCTIONALITY FOR ACTIVE BATCHES
+    if query.data.startswith("cancel_batch_"):
+        target_uid = int(query.data.split("_")[2])
+        if query.from_user.id == target_uid:
+            CANCEL_PROCESSING[target_uid] = True
+            await query.answer("Cancelling ongoing batch file process... 🛑", show_alert=True)
+        else:
+            await query.answer("❌ Yeh action aapke liye nahi hai!", show_alert=True)
+        return
+
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "about":
@@ -394,7 +432,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "start":
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇ聯ʟ', url='https://t.me/freestoryhubMR')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
