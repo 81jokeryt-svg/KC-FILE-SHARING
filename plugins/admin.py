@@ -7,7 +7,7 @@ import re
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
-from plugins.database import db  # Aapki database file ka path (agar alag ho toh change kar lein)
+from plugins.dbusers import *
 from utils import *
 
 # -------------------------------------------------------------
@@ -15,7 +15,7 @@ from utils import *
 # -------------------------------------------------------------
 def is_valid_domain(domain):
     pattern = r"^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}$"
-    return bool(re.match(pattern, domain.strip()))
+    return bool(re.match(pattern, doain.strip()))
 
 def is_valid_api(api):
     api_clean = api.strip()
