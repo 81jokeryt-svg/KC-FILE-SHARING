@@ -80,6 +80,11 @@ async def verify_user(bot, userid, token):
 async def check_verification(bot, userid):
     user = await bot.get_users(userid)
     
+    # 👑 PREMIUM BYPASS: Agar user premium member hai toh shortlink bypass ho jayega
+    is_premium = await db.check_premium_status(user.id)
+    if is_premium:
+        return True
+
     # Admin panel switch control
     settings = await db.get_settings()
     if not settings.get("verify_mode", True):
@@ -91,7 +96,7 @@ async def check_verification(bot, userid):
     if last_verified == 0:
         return False 
         
-    # 👑 FIXED PRIORITY LOGIC HERE:
+    # FIXED PRIORITY LOGIC HERE:
     # Pehle database ki setting check hogi, agar wahan kuch nahi mila tabhi config ka fallback (VERIFY_EXPIRE_TIME) use hoga.
     db_expire_time = settings.get("verify_expire_time")
     expiry_limit = int(db_expire_time) if db_expire_time is not None else VERIFY_EXPIRE_TIME
