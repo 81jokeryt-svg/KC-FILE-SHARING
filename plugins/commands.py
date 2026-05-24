@@ -72,9 +72,9 @@ async def start(client, message):
             ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
+        ],[
+            InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')
         ]]
-        if query.from_user.id in ADMINS:
-            buttons.append([InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')])
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
@@ -367,12 +367,12 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
+            InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about'),
+        ],[
+        InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')
         ]]
-        if query.from_user.id in ADMINS:
-            buttons.append([InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')])
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
         reply_markup = InlineKeyboardMarkup(buttons)
         await client.edit_message_media(
             query.message.chat.id, 
