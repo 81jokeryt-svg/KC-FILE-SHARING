@@ -4,7 +4,7 @@
 
 import logging, asyncio, os, re, random, pytz, aiohttp, requests, string, json, http.client, time
 from datetime import date, datetime
-from config import VERIFY_EXPIRE_TIME
+from config import VERIFY_EXPIRE_TIME # Yeh fallback ke liye rahega
 from shortzy import Shortzy
 from plugins.dbusers import db
 
@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 TOKENS = {}
 
 async def get_verify_shorted_link(link):
-    # 🌟 NEW: Render config ki jagah Database se live values uthayega
+    # 🌟 Live values from Database
     settings = await db.get_settings()
     shortlink_url = settings.get("shortlink_url", "linkshortify.com")
     shortlink_api = settings.get("shortlink_api", "9d9199caec2c2e30e0670f1549ffa1a316caa541")
@@ -55,11 +55,17 @@ async def check_token(bot, userid, token):
     else:
         return False
 
-async def get_token(bot, userid, link):
+async def get_token(bot, userid, link, file_data=""):
     user = await bot.get_users(userid)
     token = ''.join(random.choices(string.ascii_letters + string.digits, k=7))
     TOKENS[user.id] = {token: False}
-    link = f"{link}verify-{user.id}-{token}"
+    
+    # 📥 File data ko verification link ke sath embed kar rahe hain taaki Get File button work kare
+    if file_data:
+        link = f"{link}verify-{user.id}-{token}-{file_data}"
+    else:
+        link = f"{link}verify-{user.id}-{token}"
+        
     shortened_verify_url = await get_verify_shorted_link(link)
     return str(shortened_verify_url)
 
@@ -67,26 +73,30 @@ async def verify_user(bot, userid, token):
     user = await bot.get_users(userid)
     TOKENS[user.id] = {token: True}
     
-    # 🌟 UPDATED: Memory ki jagah user ka verification time MongoDB database me save hoga permanent
+    # MongoDB database permanent verification log
     current_time = int(time.time())
     await db.update_verify_time(user.id, current_time)
 
 async def check_verification(bot, userid):
     user = await bot.get_users(userid)
     
-    # 🌟 NEW: Admin panel se check karega ki VERIFY_MODE On hai ya Off
+    # Admin panel switch control
     settings = await db.get_settings()
     if not settings.get("verify_mode", True):
-        return True  # Agar Admin ne Verification Off kar rakhi hai, to user direct pass ho jayega
+        return True  
 
-    # 🌟 UPDATED: Database se user ka last verified timestamp nikalenge
+    # Database se user ka last verified timestamp
     last_verified = await db.get_verify_time(user.id)
     
     if last_verified == 0:
-        return False # User ne kabhi verify nahi kiya
+        return False 
         
-    verify_expire_time = settings.get("verify_expire_time", 86400)
-    if (int(time.time()) - last_verified) > VERIFY_EXPIRE_TIME:
-        return False  # Verification Expire ho gaya
+    # 👑 FIXED PRIORITY LOGIC HERE:
+    # Pehle database ki setting check hogi, agar wahan kuch nahi mila tabhi config ka fallback (VERIFY_EXPIRE_TIME) use hoga.
+    db_expire_time = settings.get("verify_expire_time")
+    expiry_limit = int(db_expire_time) if db_expire_time is not None else VERIFY_EXPIRE_TIME
+    
+    if (int(time.time()) - last_verified) > expiry_limit:
+        return False  # Expired
     else:
-        return True   # Verification Valid hai
+        return True   # Valid
