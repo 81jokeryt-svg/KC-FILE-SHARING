@@ -4,6 +4,7 @@
 
 import motor.motor_asyncio
 from config import DB_NAME, DB_URI
+from datetime import datetime, timedelta
 
 class Database:
     
@@ -11,8 +12,9 @@ class Database:
         self._client = motor.motor_asyncio.AsyncIOMotorClient(uri)
         self.db = self._client[database_name]
         self.col = self.db.users
-        # Admin Settings ke liye alag collection
         self.settings = self.db.settings
+        # 👑 Premium Users ke liye alag collection
+        self.premium = self.db.premium_users
 
     def new_user(self, id, name):
         return dict(
@@ -47,6 +49,49 @@ class Database:
         user = await self.col.find_one({'id': int(user_id)})
         return user.get('verify_time', 0) if user else 0
 
+    # =============================================================
+    # --- PREMIUM USER MANAGEMENT SYSTEM ---
+    # =============================================================
+
+    async def add_premium_user(self, user_id, days):
+        """User ko fixed dino ke liye premium list mein add ya update karega"""
+        # Current time mein user ke diye gaye 'days' jod kar expiry time nikalna
+        expiry_date = datetime.utcnow() + timedelta(days=int(days))
+        
+        await self.premium.update_one(
+            {"id": int(user_id)},
+            {"$set": {"expire_at": expiry_date, "is_premium": True}},
+            upsert=True
+        )
+        return expiry_date
+
+    async def remove_premium_user(self, user_id):
+        """User ko premium list se delete karega (Sirf UID se command chalegi)"""
+        result = await self.premium.delete_one({"id": int(user_id)})
+        return bool(result.deleted_count > 0)
+
+    async def check_premium_status(self, user_id):
+        """Check karega ki user premium hai ya nahi. Expire hone par automatic remove karega."""
+        user = await self.premium.find_one({"id": int(user_id)})
+        if not user:
+            return False
+            
+        # Agar current time expiry time se aage nikal gaya hai toh premium khatam
+        if user["expire_at"] < datetime.utcnow():
+            await self.remove_premium_user(user_id)
+            return False
+            
+        return True
+
+    async def get_all_premium_users(self):
+        """Sirf un users ki list nikalega jo abhi tak expire nahi hue hain"""
+        current_time = datetime.utcnow()
+        cursor = self.premium.find({"expire_at": {"$gt": current_time}})
+        users = await cursor.to_list(length=5000)
+        return [user["id"] for user in users]
+
+    # =============================================================
+
     # Dynamic Admin Panel Settings (Get and Update)
     async def get_settings(self):
         settings = await self.settings.find_one({"_id": "bot_config"})
@@ -57,8 +102,8 @@ class Database:
                 "auto_delete_mode": True,
                 "auto_delete_time": 1800, # Default: 30 minutes
                 "protect_content": False,
-                "start_photo": None,       # 🌟 Yahan agar photo ka link/file_id hoga toh photo jayegi, None hoga toh REMOVE ho jayegi
-                "custom_start_text": None, # 🌟 Agar aapko alag message dalna ho, toh yahan text save kar sakte hain
+                "start_photo": None,       
+                "custom_start_text": None, 
                 "shortlink_url": "linkshortify.com",
                 "shortlink_api": "9d9199caec2c2e30e0670f1549ffa1a316caa541",
                 "verify_expire_time": 86400
