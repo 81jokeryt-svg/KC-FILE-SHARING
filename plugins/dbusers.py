@@ -59,6 +59,7 @@ class Database:
                 "protect_content": False,
                 "shortlink_url": "linkshortify.com",
                 "shortlink_api": "9d9199caec2c2e30e0670f1549ffa1a316caa541"
+                "verify_expire_time": 86400
             }
             await self.settings.insert_one(default)
             return default
