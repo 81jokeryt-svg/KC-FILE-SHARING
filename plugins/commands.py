@@ -73,6 +73,8 @@ async def start(client, message):
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ]]
+        if query.from_user.id in ADMINS:
+            buttons.append([InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')])
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
@@ -367,6 +369,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ]]
+        if query.from_user.id in ADMINS:
+            buttons.append([InlineKeyboardButton('⚙️ BOT SETTINGS (ADMIN ONLY)', callback_data='open_admin_from_start')])
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
