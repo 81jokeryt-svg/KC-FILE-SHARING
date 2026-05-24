@@ -1,5 +1,4 @@
 import os
-import pyromod
 import logging
 import random
 import asyncio
@@ -75,7 +74,6 @@ async def start(client, message):
     
     if len(message.command) != 2:
         await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-        await asyncio.sleep(1)
         
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
@@ -87,7 +85,7 @@ async def start(client, message):
             InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄxlᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
         
@@ -115,9 +113,6 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=is_protect)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
-            await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-            await asyncio.sleep(1)
-            
             success_msg = await message.reply_text(
                 text=script.VERIFIED_SUCCESS_TXT.format(message.from_user.mention),
                 protect_content=is_protect
@@ -209,10 +204,8 @@ async def start(client, message):
                     size = get_size(int(file.file_size)) if hasattr(file, "file_size") else "Unknown"
                     
                     if BATCH_FILE_CAPTION:
-                        try:
-                            f_caption = BATCH_FILE_CAPTION.format(file_name='' if title is None else title, file_size='' if size is None else size, file_caption='' if f_caption is None else f_caption)
-                        except:
-                            f_caption = f_caption
+                        try: f_caption = BATCH_FILE_CAPTION.format(file_name='' if title is None else title, file_size='' if size is None else size, file_caption='' if f_caption is None else f_caption)
+                        except: f_caption = f_caption
                     if f_caption is None:
                         f_caption = f"@HDFILM0900_BOT {title}"
                         
@@ -229,10 +222,8 @@ async def start(client, message):
                     else:
                         reply_markup = None
                     
-                    await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
                     msg_out = await info.copy(chat_id=user_id, caption=f_caption, protect_content=is_protect, reply_markup=reply_markup)
                 else:
-                    await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
                     msg_out = await info.copy(chat_id=user_id, protect_content=is_protect)
                 
                 filesarr.append(msg_out)
@@ -242,7 +233,6 @@ async def start(client, message):
                 msg_out = await info.copy(chat_id=user_id, protect_content=is_protect)
                 filesarr.append(msg_out)
             except Exception as e:
-                logger.error(f"Error copying batch sub-file: {e}")
                 continue
                 
         await sts.delete()
@@ -282,12 +272,7 @@ async def start(client, message):
     try:
         decoded_bytes = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
         decoded_str = decoded_bytes.decode("ascii")
-        
-        if "file_" in decoded_str:
-            decode_file_id = decoded_str.replace("file_", "")
-        else:
-            decode_file_id = decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str
-            
+        decode_file_id = decoded_str.replace("file_", "") if "file_" in decoded_str else (decoded_str.split("_", 1)[1] if "_" in decoded_str else decoded_str)
         msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
         
         if msg.media:
@@ -295,11 +280,9 @@ async def start(client, message):
             old_title = media.file_name if hasattr(media, "file_name") else "Photo File"
             title = formate_file_name(old_title)
             size = get_size(media.file_size) if hasattr(media, "file_size") else "Unknown"
-            
             f_caption = f"@HDFILM0900_BOT <code>{title}</code>"
             if CUSTOM_FILE_CAPTION:
-                try:
-                    f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
+                try: f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
                 except: pass
             
             if STREAM_MODE == True and (msg.video or msg.document):
@@ -308,19 +291,16 @@ async def start(client, message):
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
                     InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                    InlineKeyboardButton('• 卸–ᴡᴀᴛᴄʜ •', url=stream)
+                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪstored ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪn ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
                 reply_markup=InlineKeyboardMarkup(button)
             else:
                 reply_markup = None
                 
-            await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
-            await asyncio.sleep(1) 
             del_msg = await msg.copy(chat_id=user_id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
         else:
-            await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             del_msg = await msg.copy(chat_id=user_id, protect_content=is_protect)
             
         if is_autodelete == True:
@@ -333,42 +313,42 @@ async def start(client, message):
         return
     except Exception as e:
         logger.error(f"Error in single file delivery: {str(e)}")
-        pass
 
 @Client.on_message(filters.command('api') & filters.private)
 async def shortener_api_handler(client, m: Message):
     user_id = m.from_user.id
     user = await get_user(user_id)
     cmd = m.command
-
     if len(cmd) == 1:
-        s = script.SHORTENER_API_MESSAGE.format(base_site=user["base_site"], shortener_api=user["shortener_api"])
-        return await m.reply(s)
+        return await m.reply(script.SHORTENER_API_MESSAGE.format(base_site=user["base_site"], shortener_api=user["shortener_api"]))
     elif len(cmd) == 2:    
-        api = cmd[1].strip()
-        await update_user_info(user_id, {"shortener_api": api})
-        await m.reply("<b>Shortener API updated successfully to</b> " + api)
+        await update_user_info(user_id, {"shortener_api": cmd[1].strip()})
+        await m.reply("<b>Shortener API updated successfully</b>")
 
 @Client.on_message(filters.command("base_site") & filters.private)
 async def base_site_handler(client, m: Message):
     user_id = m.from_user.id
-    user = await get_user(user_id)
     cmd = m.command
-    text = f"`/base_site (base_site)`\n\n<b>Current base site: None\n\n EX:</b> `/base_site shortnerdomain.com`\n\nIf You Want To Remove Base Site Then Copy This And Send To Bot - `/base_site None`"
     if len(cmd) == 1:
-        return await m.reply(text=text, disable_web_page_preview=True)
+        return await m.reply(text="`/base_site shortnerdomain.com`", disable_web_page_preview=True)
     elif len(cmd) == 2:
         base_site = cmd[1].strip()
-        if base_site == "None" or base_site is None:
+        if base_site == "None":
             await update_user_info(user_id, {"base_site": None})
-            return await m.reply("<b>Base Site updated successfully</b>")
-        if not domain(base_site):
-            return await m.reply(text=text, disable_web_page_preview=True)
+            return await m.reply("<b>Base Site Removed!</b>")
         await update_user_info(user_id, {"base_site": base_site})
         await m.reply("<b>Base Site updated successfully</b>")
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
+    # If it is admin callback, forward it to admin file logic
+    if query.data.startswith("adm_") or query.data in ["open_admin_from_start", "close_data"]:
+        from plugins.admin import admin_callback
+        try:
+            await admin_callback(client, query)
+            return
+        except: pass
+
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
     is_spoiler = settings.get("start_spoiler", False) 
@@ -379,39 +359,18 @@ async def cb_handler(client: Client, query: CallbackQuery):
         target_uid = int(query.data.split("_")[2])
         if query.from_user.id == target_uid:
             CANCEL_PROCESSING[target_uid] = True
-            await query.answer("Cancelling ongoing batch file process... 🛑", show_alert=True)
-        else:
-            await query.answer("❌ Yeh action aapke liye nahi hai!", show_alert=True)
+            await query.answer("Cancelling process...", show_alert=True)
         return
 
-    if query.data == "close_data":
-        await query.message.delete()
-        
-    elif query.data == "about":
-        buttons = [[
-            InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
+    if query.data == "about":
+        buttons = [[InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'), InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')]]
         me2 = (await client.get_me()).mention
-        
-        # 🌟 FIXED: text edit karne se pehle photo state ko pure spoiler parameters ke sath re-edit kiya
         if start_photo:
             try:
-                await query.message.edit_media(
-                    media=InputMediaPhoto(start_photo, caption=script.ABOUT_TXT.format(me2), has_spoiler=is_spoiler),
-                    reply_markup=reply_markup
-                )
+                await query.message.edit_media(media=InputMediaPhoto(start_photo, caption=script.ABOUT_TXT.format(me2), has_spoiler=is_spoiler), reply_markup=InlineKeyboardMarkup(buttons))
                 return
-            except Exception as e:
-                logger.error(f"Error editing about media: {e}")
-                pass
-                
-        await query.message.edit_text(
-            text=script.ABOUT_TXT.format(me2),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
+            except: pass
+        await query.message.edit_text(text=script.ABOUT_TXT.format(me2), reply_markup=InlineKeyboardMarkup(buttons))
     
     elif query.data == "start":
         buttons = [[
@@ -425,73 +384,28 @@ async def cb_handler(client: Client, query: CallbackQuery):
         ]]
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
-        reply_markup = InlineKeyboardMarkup(buttons)
         me2 = (await client.get_me()).mention
-        
-        # 🌟 FIXED: Home (start) menu standard callback media tracking fixed
         if start_photo:
             try:
-                await query.message.edit_media(
-                    media=InputMediaPhoto(start_photo, caption=start_caption.format(query.from_user.mention, me2), has_spoiler=is_spoiler),
-                    reply_markup=reply_markup
-                )
+                await query.message.edit_media(media=InputMediaPhoto(start_photo, caption=start_caption.format(query.from_user.mention, me2), has_spoiler=is_spoiler), reply_markup=InlineKeyboardMarkup(buttons))
                 return
-            except Exception as e:
-                logger.error(f"Error editing start media: {e}")
-                pass
-                
-        await query.message.edit_text(
-            text=start_caption.format(query.from_user.mention, me2),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
+            except: pass
+        await query.message.edit_text(text=start_caption.format(query.from_user.mention, me2), reply_markup=InlineKeyboardMarkup(buttons))
     
     elif query.data == "clone":
-        buttons = [[
-            InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        
-        # 🌟 FIXED: Clone menu structure state media sync tracking fixed
+        buttons = [[InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'), InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')]]
         if start_photo:
             try:
-                await query.message.edit_media(
-                    media=InputMediaPhoto(start_photo, caption=script.CLONE_TXT.format(query.from_user.mention), has_spoiler=is_spoiler),
-                    reply_markup=reply_markup
-                )
+                await query.message.edit_media(media=InputMediaPhoto(start_photo, caption=script.CLONE_TXT.format(query.from_user.mention), has_spoiler=is_spoiler), reply_markup=InlineKeyboardMarkup(buttons))
                 return
-            except Exception as e:
-                logger.error(f"Error editing clone media: {e}")
-                pass
-                
-        await query.message.edit_text(
-            text=script.CLONE_TXT.format(query.from_user.mention),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )          
+            except: pass
+        await query.message.edit_text(text=script.CLONE_TXT.format(query.from_user.mention), reply_markup=InlineKeyboardMarkup(buttons))          
     
     elif query.data == "help":
-        buttons = [[
-            InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        
-        # 🌟 FIXED: Help callback structure edit tracking fixed with complete spoiler sync
+        buttons = [[InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'), InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')]]
         if start_photo:
             try:
-                await query.message.edit_media(
-                    media=InputMediaPhoto(start_photo, caption=script.HELP_TXT, has_spoiler=is_spoiler),
-                    reply_markup=reply_markup
-                )
+                await query.message.edit_media(media=InputMediaPhoto(start_photo, caption=script.HELP_TXT, has_spoiler=is_spoiler), reply_markup=InlineKeyboardMarkup(buttons))
                 return
-            except Exception as e:
-                logger.error(f"Error editing help media: {e}")
-                pass
-                
-        await query.message.edit_text(
-            text=script.HELP_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
+            except: pass
+        await query.message.edit_text(text=script.HELP_TXT, reply_markup=InlineKeyboardMarkup(buttons))
