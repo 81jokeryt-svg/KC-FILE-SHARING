@@ -10,12 +10,10 @@ from utils import *
 # HELPER VALIDATION FUNCTIONS
 # -------------------------------------------------------------
 def is_valid_domain(domain):
-    # Regex to check valid domain format (e.g., shortener.com, api.link.in)
     pattern = r"^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}$"
     return bool(re.match(pattern, domain.strip()))
 
 def is_valid_api(api):
-    # API tokens shouldn't have spaces and usually match standard hex/alphanumeric formats length >= 8
     api_clean = api.strip()
     if " " in api_clean or len(api_clean) < 8:
         return False
@@ -162,15 +160,12 @@ async def admin_callback(client, query):
             keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
         
-    # --- DYNAMIC INPUT SETTINGS WITH VALIDATION & CANCEL FEATURE ---
+    # --- INPUT SETTINGS WITH FIXED INLINE BACK ACTION ---
     elif action == "set_time":
         await query.message.delete()
         time_msg = await client.ask(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
         if time_msg.text.strip() == "/cancel":
-            cancel_msg = await client.send_message(chat_id, "❌ Process Cancelled!")
-            await asyncio.sleep(2)
-            await cancel_msg.delete()
             await time_msg.delete()
             settings = await db.get_settings()
             text, keyboard = await get_delete_menu_layout(settings)
@@ -181,16 +176,18 @@ async def admin_callback(client, query):
             minutes = int(time_msg.text.strip())
             await db.update_setting("auto_delete_time", minutes * 60)
             success_msg = await client.send_message(chat_id, f"✅ Auto-Delete timer set to **{minutes} Minutes**!")
+            await asyncio.sleep(3)
+            await success_msg.delete()
+            await time_msg.delete()
+            
+            # Valid case: Send standard menu automatically
+            settings = await db.get_settings()
+            text, keyboard = await get_delete_menu_layout(settings)
+            await client.send_message(chat_id, text, reply_markup=keyboard)
         except ValueError:
-            success_msg = await client.send_message(chat_id, "❌ Invalid Format! Sirf numbers allowed hain.")
-        
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await time_msg.delete()
-        
-        settings = await db.get_settings()
-        text, keyboard = await get_delete_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
+            # Invalid case: Send crisp error message with a manual Back Button
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_delete")]])
+            await client.send_message(chat_id, "❌ **Invalid Format!** Only clean numbers are allowed.", reply_markup=back_keyboard)
         return
 
     elif action == "set_token_time":
@@ -198,9 +195,6 @@ async def admin_callback(client, query):
         time_msg = await client.ask(chat_id, "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
         if time_msg.text.strip() == "/cancel":
-            cancel_msg = await client.send_message(chat_id, "❌ Process Cancelled!")
-            await asyncio.sleep(2)
-            await cancel_msg.delete()
             await time_msg.delete()
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
@@ -211,16 +205,16 @@ async def admin_callback(client, query):
             hours = int(time_msg.text.strip())
             await db.update_setting("verify_expire_time", hours * 3600)
             success_msg = await client.send_message(chat_id, f"✅ Token validity set to **{hours} Hours**!")
-        except ValueError:
-            success_msg = await client.send_message(chat_id, "❌ Invalid Format! Sirf numbers allowed hain.")
+            await asyncio.sleep(3)
+            await success_msg.delete()
+            await time_msg.delete()
             
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await time_msg.delete()
-        
-        settings = await db.get_settings()
-        text, keyboard = await get_verify_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
+            settings = await db.get_settings()
+            text, keyboard = await get_verify_menu_layout(settings)
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+        except ValueError:
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
+            await client.send_message(chat_id, "❌ **Invalid Format!** Only integers/numbers are allowed.", reply_markup=back_keyboard)
         return
 
     elif action == "change_link":
@@ -231,9 +225,6 @@ async def admin_callback(client, query):
         new_site = site_msg.text.strip()
         
         if new_site == "/cancel":
-            cancel_msg = await client.send_message(chat_id, "❌ Process Cancelled!")
-            await asyncio.sleep(2)
-            await cancel_msg.delete()
             await site_msg.delete()
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
@@ -241,13 +232,9 @@ async def admin_callback(client, query):
             return
 
         if not is_valid_domain(new_site):
-            err_msg = await client.send_message(chat_id, "❌ **Invalid Domain Format!**\nKripya sahi text format provide karein (e.g., `site.com` ya `api.cc`).")
-            await asyncio.sleep(4)
-            await err_msg.delete()
-            await site_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
+            # Invalid Domain: Inline Back button configuration
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
+            await client.send_message(chat_id, "❌ **Invalid Domain Format!**\nUse explicit domain formats like `site.com` or `api.cc` without protocols.", reply_markup=back_keyboard)
             return
 
         # 2. Ask API
@@ -255,9 +242,6 @@ async def admin_callback(client, query):
         new_api = api_msg.text.strip()
         
         if new_api == "/cancel":
-            cancel_msg = await client.send_message(chat_id, "❌ Process Cancelled!")
-            await asyncio.sleep(2)
-            await cancel_msg.delete()
             await site_msg.delete()
             await api_msg.delete()
             settings = await db.get_settings()
@@ -266,17 +250,12 @@ async def admin_callback(client, query):
             return
 
         if not is_valid_api(new_api):
-            err_msg = await client.send_message(chat_id, "❌ **Invalid API Format!**\nAPI key me spaces nahi hone chahiye aur length minimum 8 chars honi chahiye.")
-            await asyncio.sleep(4)
-            await err_msg.delete()
-            await site_msg.delete()
-            await api_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
+            # Invalid API: Inline Back button configuration
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
+            await client.send_message(chat_id, "❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid alphanumeric sequences.", reply_markup=back_keyboard)
             return
         
-        # Save validated results
+        # All validation passed successfully
         await db.update_setting("shortlink_url", new_site)
         await db.update_setting("shortlink_api", new_api)
         
