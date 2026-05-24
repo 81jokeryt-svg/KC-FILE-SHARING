@@ -20,10 +20,8 @@ from TechVJ.utils.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
-# 🛑 Active batch processing ko cancel karne ke liye global tracker dictionary
 CANCEL_PROCESSING = {}
 
-# Background mein message delete karne ke liye helper function
 async def auto_delete_msg(message, delay=300):
     await asyncio.sleep(delay)
     try:
@@ -32,7 +30,6 @@ async def auto_delete_msg(message, delay=300):
         logger.error(f"Error deleting temporary verification message: {e}")
 
 def get_size(size):
-    """Get size in readable format"""
     units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
     size = float(size)
     i = 0
@@ -55,7 +52,6 @@ async def start(client, message):
     username = client.me.username
     user_id = message.from_user.id
     
-    # Dynamic settings fetch kar rahe hain sabse pehle
     settings = await db.get_settings()
     is_verify_mode = settings.get("verify_mode", True)
     is_protect = settings.get("protect_content", False)
@@ -63,17 +59,13 @@ async def start(client, message):
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
     
-    # 👑 PREMIUM CHECK: Database se correct function query kar rahe hain
     is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
-    # Dynamic Start Photo, Spoiler aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 🌟 Fetching spoiler settings dynamically
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
     
-    # Premium purchase link from admin configuration
     premium_buy_link = settings.get("premium_buy_link", "https://t.me/HDFILM0900_BOT")
-    
     start_caption = db_start_text if db_start_text else script.START_TXT
 
     if not await db.is_user_exist(user_id):
@@ -89,12 +81,12 @@ async def start(client, message):
             InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
             ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('😊 ᴀʙᴏᴜ通–ᴛ', callback_data='about')
+            InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ],[
             InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄxlᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
         
@@ -103,7 +95,7 @@ async def start(client, message):
                 photo=start_photo,
                 caption=start_caption.format(message.from_user.mention, me.mention),
                 reply_markup=reply_markup,
-                has_spoiler=is_spoiler # 🌟 Applied dynamic spoiler toggle here
+                has_spoiler=is_spoiler
             )
         else:
             await message.reply_text(
@@ -115,7 +107,6 @@ async def start(client, message):
 
     data = message.command[1]
     
-    # 1. HANDLE VERIFICATION LINKS
     if data.split("-", 1)[0] == "verify":
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
@@ -136,11 +127,9 @@ async def start(client, message):
             return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=is_protect)
         return
 
-    # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
             is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
-        
             if not is_user_premium: 
                if settings.get("premium_mode", False):
                    buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
@@ -168,19 +157,13 @@ async def start(client, message):
         ])
         
         CANCEL_PROCESSING[user_id] = False
-
-        sts = await message.reply(
-            text="<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆ait.",
-            reply_markup=processing_keyboard
-        )
-        
+        sts = await message.reply(text="<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆ait.", reply_markup=processing_keyboard)
         file_id = data.split("-", 1)[1]
         msgs = BATCH_FILES.get(file_id)
         
         if not msgs:
             try:
                 decode_file_id = base64.urlsafe_b64decode(file_id + "=" * (-len(file_id) % 4)).decode("ascii")
-                
                 if "file_" in decode_file_id:
                     decode_file_id = decode_file_id.replace("file_", "")
                 elif "_" in decode_file_id:
@@ -188,10 +171,8 @@ async def start(client, message):
                     
                 msg = await client.get_messages(DB_CHANNEL, int(decode_file_id))
                 file = await client.download_media(msg)
-                
                 with open(file, "r") as file_data:
                     msgs = json.loads(file_data.read())
-                
                 os.remove(file)
                 BATCH_FILES[file_id] = msgs
             except Exception as e:
@@ -224,8 +205,8 @@ async def start(client, message):
                         f_caption = f"@HDFILM0900_BOT {f_caption.html}"
                     old_title = getattr(file, "file_name", "Media File")
                     title = formate_file_name(old_title)
-                    
                     size = get_size(int(file.file_size)) if hasattr(file, "file_size") else "Unknown"
+                    
                     if BATCH_FILE_CAPTION:
                         try:
                             f_caption = BATCH_FILE_CAPTION.format(file_name='' if title is None else title, file_size='' if size is None else size, file_caption='' if f_caption is None else f_caption)
@@ -264,7 +245,6 @@ async def start(client, message):
                 continue
                 
         await sts.delete()
-        
         if user_id in CANCEL_PROCESSING:
             del CANCEL_PROCESSING[user_id]
         
@@ -272,17 +252,12 @@ async def start(client, message):
             k = await client.send_message(chat_id=user_id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
             for x in filesarr:
-                try:
-                    await x.delete()
-                except:
-                    pass
-            try:
-                await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
-            except:
-                pass
+                try: await x.delete()
+                except: pass
+            try: await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+            except: pass
         return
 
-    # 3. HANDLE SINGLE FILE / PHOTO LINKS
     is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     if not is_user_premium: 
        if settings.get("premium_mode", False):
@@ -324,8 +299,7 @@ async def start(client, message):
             if CUSTOM_FILE_CAPTION:
                 try:
                     f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
-                except:
-                    pass
+                except: pass
             
             if STREAM_MODE == True and (msg.video or msg.document):
                 log_msg = msg
@@ -335,7 +309,7 @@ async def start(client, message):
                     InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
                     InlineKeyboardButton('• 卸–ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪstored ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
                 reply_markup=InlineKeyboardMarkup(button)
             else:
@@ -343,7 +317,6 @@ async def start(client, message):
                 
             await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
             await asyncio.sleep(1) 
-            
             del_msg = await msg.copy(chat_id=user_id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
         else:
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
@@ -352,14 +325,10 @@ async def start(client, message):
         if is_autodelete == True:
             k = await client.send_message(chat_id = user_id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
-            try:
-                await del_msg.delete()
-            except:
-                pass
-            try:
-                await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
-            except:
-                pass
+            try: await del_msg.delete()
+            except: pass
+            try: await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            except: pass
         return
     except Exception as e:
         logger.error(f"Error in single file delivery: {str(e)}")
@@ -374,7 +343,6 @@ async def shortener_api_handler(client, m: Message):
     if len(cmd) == 1:
         s = script.SHORTENER_API_MESSAGE.format(base_site=user["base_site"], shortener_api=user["shortener_api"])
         return await m.reply(s)
-
     elif len(cmd) == 2:    
         api = cmd[1].strip()
         await update_user_info(user_id, {"shortener_api": api})
@@ -393,7 +361,6 @@ async def base_site_handler(client, m: Message):
         if base_site == "None" or base_site is None:
             await update_user_info(user_id, {"base_site": None})
             return await m.reply("<b>Base Site updated successfully</b>")
-            
         if not domain(base_site):
             return await m.reply(text=text, disable_web_page_preview=True)
         await update_user_info(user_id, {"base_site": base_site})
@@ -403,7 +370,7 @@ async def base_site_handler(client, m: Message):
 async def cb_handler(client: Client, query: CallbackQuery):
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 🌟 Callback handling me bhi spoiler dynamic kiya
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
@@ -418,22 +385,27 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
     if query.data == "close_data":
         await query.message.delete()
+        
     elif query.data == "about":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
-        if start_photo:
-            try:
-                await client.edit_message_media(
-                    query.message.chat.id, 
-                    query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
-                )
-            except:
-                pass
         reply_markup = InlineKeyboardMarkup(buttons)
         me2 = (await client.get_me()).mention
+        
+        # 🌟 FIXED: text edit karne se pehle photo state ko pure spoiler parameters ke sath re-edit kiya
+        if start_photo:
+            try:
+                await query.message.edit_media(
+                    media=InputMediaPhoto(start_photo, caption=script.ABOUT_TXT.format(me2), has_spoiler=is_spoiler),
+                    reply_markup=reply_markup
+                )
+                return
+            except Exception as e:
+                logger.error(f"Error editing about media: {e}")
+                pass
+                
         await query.message.edit_text(
             text=script.ABOUT_TXT.format(me2),
             reply_markup=reply_markup,
@@ -443,27 +415,30 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "start":
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛе ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ],[
-        InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
+            InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
         reply_markup = InlineKeyboardMarkup(buttons)
+        me2 = (await client.get_me()).mention
         
+        # 🌟 FIXED: Home (start) menu standard callback media tracking fixed
         if start_photo:
             try:
-                await client.edit_message_media(
-                    query.message.chat.id, 
-                    query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
+                await query.message.edit_media(
+                    media=InputMediaPhoto(start_photo, caption=start_caption.format(query.from_user.mention, me2), has_spoiler=is_spoiler),
+                    reply_markup=reply_markup
                 )
-            except:
+                return
+            except Exception as e:
+                logger.error(f"Error editing start media: {e}")
                 pass
-        me2 = (await client.get_me()).mention
+                
         await query.message.edit_text(
             text=start_caption.format(query.from_user.mention, me2),
             reply_markup=reply_markup,
@@ -475,16 +450,20 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
+        reply_markup = InlineKeyboardMarkup(buttons)
+        
+        # 🌟 FIXED: Clone menu structure state media sync tracking fixed
         if start_photo:
             try:
-                await client.edit_message_media(
-                    query.message.chat.id, 
-                    query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
+                await query.message.edit_media(
+                    media=InputMediaPhoto(start_photo, caption=script.CLONE_TXT.format(query.from_user.mention), has_spoiler=is_spoiler),
+                    reply_markup=reply_markup
                 )
-            except:
+                return
+            except Exception as e:
+                logger.error(f"Error editing clone media: {e}")
                 pass
-        reply_markup = InlineKeyboardMarkup(buttons)
+                
         await query.message.edit_text(
             text=script.CLONE_TXT.format(query.from_user.mention),
             reply_markup=reply_markup,
@@ -496,16 +475,20 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
+        reply_markup = InlineKeyboardMarkup(buttons)
+        
+        # 🌟 FIXED: Help callback structure edit tracking fixed with complete spoiler sync
         if start_photo:
             try:
-                await client.edit_message_media(
-                    query.message.chat.id, 
-                    query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
+                await query.message.edit_media(
+                    media=InputMediaPhoto(start_photo, caption=script.HELP_TXT, has_spoiler=is_spoiler),
+                    reply_markup=reply_markup
                 )
-            except:
+                return
+            except Exception as e:
+                logger.error(f"Error editing help media: {e}")
                 pass
-        reply_markup = InlineKeyboardMarkup(buttons)
+                
         await query.message.edit_text(
             text=script.HELP_TXT,
             reply_markup=reply_markup,
