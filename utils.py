@@ -85,7 +85,7 @@ async def check_verification(bot, userid):
     if last_verified == 0:
         return False # User ne kabhi verify nahi kiya
         
-    # Ab check hoga ki token valid hai ya expire ho chuka hai
+    verify_expire_time = settings.get("verify_expire_time", 86400)
     if (int(time.time()) - last_verified) > VERIFY_EXPIRE_TIME:
         return False  # Verification Expire ho gaya
     else:
