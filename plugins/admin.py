@@ -85,9 +85,9 @@ async def get_delete_menu_layout(settings):
     )
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"Auto Delete Mode: {d_status}", callback_data="adm_toggle_delete")],
-        [InlineKeyboardButton("Set Delete Timer ⏱️", callback_data="adm_set_time")],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+        [InlineKeyboardButton(f"𝗔𝗨𝗧𝗢 𝗗𝗘𝗟𝗘𝗧𝗘 𝗠𝗢𝗗𝗘: {d_status}", callback_data="adm_toggle_delete")],
+        [InlineKeyboardButton("𝗦𝗘𝗧 𝗗𝗘𝗟𝗘𝗧𝗘 𝗧𝗜𝗠𝗘 ⏱️", callback_data="adm_set_time")],
+        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
 
