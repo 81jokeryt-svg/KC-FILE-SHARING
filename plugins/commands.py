@@ -68,7 +68,7 @@ async def start(client, message):
     
     # Dynamic Start Photo, Spoiler aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) 
+    is_spoiler = settings.get("start_spoiler", False) # 🌟 Fetching spoiler settings dynamically
     db_start_text = settings.get("custom_start_text", None)
     
     # Premium purchase link from admin configuration
@@ -103,7 +103,7 @@ async def start(client, message):
                 photo=start_photo,
                 caption=start_caption.format(message.from_user.mention, me.mention),
                 reply_markup=reply_markup,
-                has_spoiler=is_spoiler 
+                has_spoiler=is_spoiler # 🌟 Applied dynamic spoiler toggle here
             )
         else:
             await message.reply_text(
@@ -143,7 +143,6 @@ async def start(client, message):
         
             if not is_user_premium: 
                if settings.get("premium_mode", False):
-                   # 👑 Added Buy Premium Button here for Batch Links
                    buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
                    await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।", reply_markup=buy_btn)
                    return 
@@ -287,7 +286,6 @@ async def start(client, message):
     is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     if not is_user_premium: 
        if settings.get("premium_mode", False):
-           # 👑 Added Buy Premium Button here for Single Links
            buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
            await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।", reply_markup=buy_btn)
            return 
@@ -405,7 +403,7 @@ async def base_site_handler(client, m: Message):
 async def cb_handler(client: Client, query: CallbackQuery):
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) 
+    is_spoiler = settings.get("start_spoiler", False) # 🌟 Callback handling me bhi spoiler dynamic kiya
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
@@ -445,7 +443,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "start":
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛе ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
         ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
