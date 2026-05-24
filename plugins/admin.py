@@ -109,12 +109,12 @@ async def get_start_page_menu_layout(settings):
     )
     
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✍️ Set Start Text", callback_data="adm_set_start_txt"), 
-         InlineKeyboardButton("🗑️ Reset Start Text", callback_data="adm_reset_start_txt")],
-        [InlineKeyboardButton("🖼️ Set Start Photo", callback_data="adm_set_start_img"), 
-         InlineKeyboardButton("🗑️ Remove Start Photo", callback_data="adm_remove_start_img")],
-        [InlineKeyboardButton(f"🎭 Spoiler Mode: {'🟢 ON' if settings.get('start_spoiler', False) else '🔴 OFF'}", callback_data="adm_toggle_spoiler")],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+        [InlineKeyboardButton("✍️ 𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗧𝗘𝗫𝗧", callback_data="adm_set_start_txt")], 
+        [InlineKeyboardButton("🗑️ 𝗥𝗘𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗧𝗘𝗫𝗧", callback_data="adm_reset_start_txt")],
+        [InlineKeyboardButton("🖼️ 𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢", callback_data="adm_set_start_img")], 
+        [InlineKeyboardButton("🗑️ 𝗥𝗘𝗠𝗢𝗩𝗘 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢", callback_data="adm_remove_start_img")],
+        [InlineKeyboardButton(f"🎭 𝗦𝗣𝗢𝗜𝗟𝗘𝗥 𝗠𝗢𝗗𝗘: {'🟢 ON' if settings.get('start_spoiler', False) else '🔴 OFF'}", callback_data="adm_toggle_spoiler")],
+        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
 
