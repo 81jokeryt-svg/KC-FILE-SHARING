@@ -11,12 +11,14 @@ class Database:
         self._client = motor.motor_asyncio.AsyncIOMotorClient(uri)
         self.db = self._client[database_name]
         self.col = self.db.users
+        # Admin Settings ke liye alag collection
+        self.settings = self.db.settings
 
     def new_user(self, id, name):
         return dict(
             id = id,
             name = name,
-            verify_time = 0 # 🌟 NEW: Default verification time initialized to 0
+            verify_time = 0
         )
     
     async def add_user(self, id, name):
@@ -37,20 +39,32 @@ class Database:
     async def delete_user(self, user_id):
         await self.col.delete_many({'id': int(user_id)})
 
-    # 🌟 NEW: User ka verification time database me permanently update karne ke liye
+    # User verification ke liye
     async def update_verify_time(self, user_id, verify_time):
-        await self.col.update_one(
-            {'id': int(user_id)},
-            {'$set': {'verify_time': verify_time}},
-            upsert=True
-        )
+        await self.col.update_one({'id': int(user_id)}, {'$set': {'verify_time': verify_time}}, upsert=True)
 
-    # 🌟 NEW: User ka saved verification time database se fetch karne ke liye
     async def get_verify_time(self, user_id):
         user = await self.col.find_one({'id': int(user_id)})
         return user.get('verify_time', 0) if user else 0
 
+    # Dynamic Admin Panel Settings (Get and Update)
+    async def get_settings(self):
+        settings = await self.settings.find_one({"_id": "bot_config"})
+        if not settings:
+            default = {
+                "_id": "bot_config",
+                "verify_mode": True,
+                "auto_delete_mode": True,
+                "auto_delete_time": 1800, # Default: 30 minutes (in seconds)
+                "protect_content": False,
+                "shortlink_url": "linkshortify.com",
+                "shortlink_api": "9d9199caec2c2e30e0670f1549ffa1a316caa541"
+            }
+            await self.settings.insert_one(default)
+            return default
+        return settings
+
+    async def update_setting(self, key, value):
+        await self.settings.update_one({"_id": "bot_config"}, {"$set": {key: value}}, upsert=True)
 
 db = Database(DB_URI, DB_NAME)
-
-# dbusers.py
