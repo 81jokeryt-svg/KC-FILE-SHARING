@@ -15,7 +15,7 @@ from utils import *
 # -------------------------------------------------------------
 def is_valid_domain(domain):
     pattern = r"^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}$"
-    return bool(re.match(pattern, doain.strip()))
+    return bool(re.match(pattern, domain.strip()))
 
 def is_valid_api(api):
     api_clean = api.strip()
