@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 BATCH_FILES = {}
 
-# 🌟 Background mein message delete karne ke liye helper function
+# Background mein message delete karne ke liye helper function
 async def auto_delete_msg(message, delay=300):
     await asyncio.sleep(delay)
     try:
@@ -50,6 +50,14 @@ def formate_file_name(file_name):
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     username = client.me.username
+    # Dynamic settings fetch kar rahe hain sabse pehle
+    settings = await db.get_settings()
+    is_verify_mode = settings.get("verify_mode", True)
+    is_protect = settings.get("protect_content", False)
+    is_autodelete = settings.get("auto_delete_mode", True)
+    del_time_seconds = settings.get("auto_delete_time", 1800)
+    del_time_minutes = del_time_seconds // 60
+
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
@@ -83,35 +91,33 @@ async def start(client, message):
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
         if str(message.from_user.id) != str(userid):
-            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
+            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=is_protect)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             await asyncio.sleep(1)
             
-            # 🌟 Successful Verification Message with 5 min auto-delete timer
             success_msg = await message.reply_text(
                 text=script.VERIFIED_SUCCESS_TXT.format(message.from_user.mention),
-                protect_content=True
+                protect_content=is_protect
             )
             asyncio.create_task(auto_delete_msg(success_msg, 300))
             await verify_user(client, userid, token)
         else:
-            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=True)
+            return await message.reply_text(text="<b>Invalid link or Expired link !</b>", protect_content=is_protect)
         return
 
     # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
-            if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
+            if not await check_verification(client, message.from_user.id) and is_verify_mode == True:
                 btn = [[
                     InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
                     InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
-                # 🌟 Not Verified Warning Message with 5 min auto-delete timer
                 not_verified_msg = await message.reply_text(
-                    text=script.NOT_VERIFIED_TXT,
-                    protect_content=True,
+                    text=script.NOT_VERIFIED_TXT.format(message.from_user.mention),
+                    protect_content=is_protect,
                     reply_markup=InlineKeyboardMarkup(btn)
                 )
                 asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
@@ -186,16 +192,17 @@ async def start(client, message):
                         reply_markup = None
                     
                     await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
-                    msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=False, reply_markup=reply_markup)
+                    # 🌟 FIX: Isme protect_content database ke setting variable se link ho gaya hai
+                    msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=is_protect, reply_markup=reply_markup)
                 else:
                     await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-                    msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
+                    msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect)
                 
                 filesarr.append(msg_out)
                 await asyncio.sleep(1)
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                msg_out = await info.copy(chat_id=message.from_user.id, protect_content=False)
+                msg_out = await info.copy(chat_id=message.from_user.id, protect_content=is_protect)
                 filesarr.append(msg_out)
             except Exception as e:
                 logger.error(f"Error copying batch sub-file: {e}")
@@ -203,27 +210,30 @@ async def start(client, message):
                 
         await sts.delete()
         
-        if AUTO_DELETE_MODE == True:
-            k = await client.send_message(chat_id=message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
-            await asyncio.sleep(AUTO_DELETE_TIME)
+        # 🌟 FIX: Auto Delete dynamic timer implement ho gaya hai panel data ke saath
+        if is_autodelete == True:
+            k = await client.send_message(chat_id=message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
+            await asyncio.sleep(del_time_seconds)
             for x in filesarr:
                 try:
                     await x.delete()
                 except:
                     pass
-            await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+            try:
+                await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+            except:
+                pass
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    if not await check_verification(client, message.from_user.id) and VERIFY_MODE == True:
+    if not await check_verification(client, message.from_user.id) and is_verify_mode == True:
         btn = [[
             InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, message.from_user.id, f"https://telegram.me/{username}?start=")),
             InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
-        ]]
-        # 🌟 Single link verification warning message with 5 min auto-delete timer
+                ]]
         not_verified_msg = await message.reply_text(
-            text=script.NOT_VERIFIED_TXT,
-            protect_content=True,
+            text=script.NOT_VERIFIED_TXT.format(message.from_user.mention),
+            protect_content=is_protect,
             reply_markup=InlineKeyboardMarkup(btn)
         )
         asyncio.create_task(auto_delete_msg(not_verified_msg, 300))
@@ -246,7 +256,7 @@ async def start(client, message):
             title = formate_file_name(old_title)
             size = get_size(media.file_size) if hasattr(media, "file_size") else "Unknown"
             
-            f_caption = f"@VJ_Bots <code>{title}</code>"
+            f_caption = f"@HDFILM0900_BOT <code>{title}</code>"
             if CUSTOM_FILE_CAPTION:
                 try:
                     f_caption=CUSTOM_FILE_CAPTION.format(file_name= '' if title is None else title, file_size='' if size is None else size, file_caption='')
@@ -261,7 +271,7 @@ async def start(client, message):
                     InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪcustomɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
                 reply_markup=InlineKeyboardMarkup(button)
             else:
@@ -270,19 +280,24 @@ async def start(client, message):
             await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
             await asyncio.sleep(1) 
             
-            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=False)
+            # 🌟 FIX: Single file block me protect_content fully linked
+            del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
         else:
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
-            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=False)
+            del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protect)
             
-        if AUTO_DELETE_MODE == True:
-            k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{AUTO_DELETE} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
-            await asyncio.sleep(AUTO_DELETE_TIME)
+        # 🌟 FIX: Single file auto delete dynamic sync with DB
+        if is_autodelete == True:
+            k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
+            await asyncio.sleep(del_time_seconds)
             try:
                 await del_msg.delete()
             except:
                 pass
-            await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            try:
+                await k.edit_text("<b>Your File/Video is successfully deleted!!!</b>")
+            except:
+                pass
         return
     except Exception as e:
         logger.error(f"Error in single file delivery: {str(e)}")
