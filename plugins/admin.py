@@ -36,7 +36,7 @@ async def get_main_panel_layout(settings):
     )
     
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔐 VERIFICATION MENU", callback_data="adm_sub_verify")],
+        [InlineKeyboardButton("🔐 VERIFICATION & SWITCH MENU", callback_data="adm_sub_verify")],
         [InlineKeyboardButton("⏱️ AUTO DELETE MENU", callback_data="adm_sub_delete")],
         [InlineKeyboardButton("🎨 START PAGE CUSTOMIZER", callback_data="adm_sub_start_page")],
         [InlineKeyboardButton("👑 PREMIUM USER MENU", callback_data="adm_sub_premium")],
@@ -46,15 +46,17 @@ async def get_main_panel_layout(settings):
     return text, keyboard
 
 # -------------------------------------------------------------
-# 2. VERIFICATION SUB-MENU LAYOUT
+# 2. VERIFICATION & SWITCH SUB-MENU LAYOUT
 # -------------------------------------------------------------
 async def get_verify_menu_layout(settings):
     v_status = "🟢 ON" if settings.get("verify_mode", True) else "🔴 OFF"
+    prem_mode_status = "🟢 ON" if settings.get("premium_mode", False) else "🔴 OFF"
     v_expire_hours = settings.get("verify_expire_time", 86400) // 3600
     
     text = (
-        "🔐 **VERIFICATION CONFIGURATION**\n"
+        "🔐 **VERIFICATION & FEATURE SWITCH**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ *Note: Ek waqt par sirf Verification chalega ya toh Premium Mode.*\n\n"
         f"🔗 **Shortener Site:** `{settings.get('shortlink_url')}`\n"
         f"🔑 **Shortener API:** `{settings.get('shortlink_api')}`\n"
         f"⏱️ **Token Validity:** `{v_expire_hours} Hours`"
@@ -62,6 +64,7 @@ async def get_verify_menu_layout(settings):
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(f"Verification Mode: {v_status}", callback_data="adm_toggle_verify")],
+        [InlineKeyboardButton(f"Premium Mode (Lock File): {prem_mode_status}", callback_data="adm_toggle_premium_mode")],
         [InlineKeyboardButton("Set Token Validity 🔑", callback_data="adm_set_token_time")],
         [InlineKeyboardButton("Change Shortener Link & API 🔗", callback_data="adm_change_link")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
@@ -201,7 +204,29 @@ async def admin_callback(client, query):
     elif action == "toggle_verify":
         new_val = not settings.get("verify_mode", True)
         await db.update_setting("verify_mode", new_val)
-        await query.answer("Verification Mode Updated! ✅")
+        
+        # 🔄 SWITCH MODE LOGIC: Verification ON hote hi Premium Mode automatically OFF ho jayega
+        if new_val == True:
+            await db.update_setting("premium_mode", False)
+            await query.answer("Verification Mode ON & Premium Mode OFF! 🔄", show_alert=True)
+        else:
+            await query.answer("Verification Mode Updated! ✅")
+            
+        settings = await db.get_settings()
+        text, keyboard = await get_verify_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
+
+    elif action == "toggle_premium_mode":
+        new_val = not settings.get("premium_mode", False)
+        await db.update_setting("premium_mode", new_val)
+        
+        # 🔄 SWITCH MODE LOGIC: Premium Mode ON hote hi Verification automáticamente OFF ho jayega
+        if new_val == True:
+            await db.update_setting("verify_mode", False)
+            await query.answer("Premium Mode ON & Verification OFF! 👑", show_alert=True)
+        else:
+            await query.answer("Premium Mode Updated! ✅")
+            
         settings = await db.get_settings()
         text, keyboard = await get_verify_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
@@ -225,12 +250,10 @@ async def admin_callback(client, query):
         await query.message.edit_text(text, reply_markup=keyboard)
 
     # =============================================================
-    # --- PREMIUM CONTROL ACTIONS (WITH AUTOMATIC USER NOTIFICATIONS) ---
+    # --- PREMIUM CONTROL ACTIONS ---
     # =============================================================
     elif action == "add_prem":
         await query.message.delete()
-        
-        # STEP 1: UID (Telegram ID) maangna
         id_prompt = await client.ask(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
         if id_prompt.text.strip() == "/cancel":
@@ -246,8 +269,6 @@ async def admin_callback(client, query):
             return
 
         target_id = int(u_input)
-        
-        # STEP 2: Dino ki ginti (Days) maangna
         days_prompt = await client.ask(chat_id, f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n\n*(Example: 30 din ke liye '30' likhein. Cancel ke liye /cancel)*", filters=filters.text)
         
         if days_prompt.text.strip() == "/cancel":
@@ -264,8 +285,6 @@ async def admin_callback(client, query):
             return
             
         premium_days = int(days_input)
-        
-        # Database functions ko query karna (UID + Days)
         expiry_date = await db.add_premium_user(target_id, premium_days)
         formatted_expiry = expiry_date.strftime('%Y-%m-%d %H:%M UTC')
         
@@ -279,7 +298,6 @@ async def admin_callback(client, query):
             f"*Yeh user expiry date aate hi automatic list se remove ho jayega.*"
         )
         
-        # 🔔 LIVE NOTIFICATION TO USER: Jab premium add hoga tab notification jayega
         try:
             await client.send_message(
                 chat_id=target_id,
@@ -305,8 +323,6 @@ async def admin_callback(client, query):
 
     elif action == "rem_prem":
         await query.message.delete()
-        
-        # Remove karne ke liye Khali UID maangna
         id_prompt = await client.ask(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
         if id_prompt.text.strip() == "/cancel":
@@ -326,8 +342,6 @@ async def admin_callback(client, query):
         
         if is_removed:
             success_msg = await client.send_message(chat_id, f"🗑️ **User ID** `{target_id}` **Premium List se successfully hata di gayi!**")
-            
-            # 🔔 LIVE NOTIFICATION TO USER: Jab premium cancel/remove hoga tab alert jayega
             try:
                 await client.send_message(
                     chat_id=target_id,
@@ -369,7 +383,7 @@ async def admin_callback(client, query):
         return
 
     # =============================================================
-    # --- START PAGE CONTROL ACTIONS (TEXT & IMAGE SET/REMOVE) ---
+    # --- START PAGE CONTROL ACTIONS ---
     # =============================================================
     elif action == "set_start_txt":
         await query.message.delete()
