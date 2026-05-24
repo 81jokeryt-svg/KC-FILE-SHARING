@@ -55,8 +55,10 @@ class Database:
                 "_id": "bot_config",
                 "verify_mode": True,
                 "auto_delete_mode": True,
-                "auto_delete_time": 1800, # Default: 30 minutes (in seconds)
+                "auto_delete_time": 1800, # Default: 30 minutes
                 "protect_content": False,
+                "start_photo": None,       # 🌟 Yahan agar photo ka link/file_id hoga toh photo jayegi, None hoga toh REMOVE ho jayegi
+                "custom_start_text": None, # 🌟 Agar aapko alag message dalna ho, toh yahan text save kar sakte hain
                 "shortlink_url": "linkshortify.com",
                 "shortlink_api": "9d9199caec2c2e30e0670f1549ffa1a316caa541",
                 "verify_expire_time": 86400
