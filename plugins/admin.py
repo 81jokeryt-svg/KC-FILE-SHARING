@@ -1,9 +1,13 @@
+# Don't Remove Credit @VJ_Bots
+# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
+# Ask Doubt on telegram @KingVJ01
+
 import asyncio
 import re
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
-from plugins.dbusers import *
+from plugins.database import db  # Aapki database file ka path (agar alag ho toh change kar lein)
 from utils import *
 
 # -------------------------------------------------------------
@@ -36,6 +40,7 @@ async def get_main_panel_layout(settings):
         [InlineKeyboardButton("🔐 VERIFICATION MENU", callback_data="adm_sub_verify")],
         [InlineKeyboardButton("⏱️ AUTO DELETE MENU", callback_data="adm_sub_delete")],
         [InlineKeyboardButton("🎨 START PAGE CUSTOMIZER", callback_data="adm_sub_start_page")],
+        [InlineKeyboardButton("👑 PREMIUM USER MENU", callback_data="adm_sub_premium")],
         [InlineKeyboardButton(f"🛡️ PROTECT CONTENT: {p_status}", callback_data="adm_toggle_protect")],
         [InlineKeyboardButton("❌ Close Panel", callback_data="close_data")]
     ])
@@ -85,11 +90,10 @@ async def get_delete_menu_layout(settings):
     return text, keyboard
 
 # -------------------------------------------------------------
-# 4. START PAGE SUB-MENU LAYOUT (FIXED KEY NAMES)
+# 4. START PAGE SUB-MENU LAYOUT
 # -------------------------------------------------------------
 async def get_start_page_menu_layout(settings):
     has_photo = "🟢 Set (Custom)" if settings.get("start_photo") else "🔴 Not Set (Text Only)"
-    # 🌟 FIX: start_text ki jagah custom_start_text fetch kiya taaki start.py se match kare
     has_text = "🟢 Custom Text Enabled" if settings.get("custom_start_text") else "⚪ Default Text Enabled"
     
     text = (
@@ -105,6 +109,31 @@ async def get_start_page_menu_layout(settings):
          InlineKeyboardButton("🗑️ Reset Start Text", callback_data="adm_reset_start_txt")],
         [InlineKeyboardButton("🖼️ Set Start Photo", callback_data="adm_set_start_img"), 
          InlineKeyboardButton("🗑️ Remove Start Photo", callback_data="adm_remove_start_img")],
+        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+    ])
+    return text, keyboard
+
+# -------------------------------------------------------------
+# 5. PREMIUM USER MANAGEMENT SUB-MENU LAYOUT
+# -------------------------------------------------------------
+async def get_premium_menu_layout():
+    try:
+        users_list = await db.get_all_premium_users()
+        total_premium = len(users_list)
+    except Exception:
+        total_premium = 0
+
+    text = (
+        "👑 **PREMIUM USER CONFIGURATION**\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 **Total Premium Users:** `{total_premium}`\n\n"
+        "Aap niche diye gaye inline buttons ka use karke kisi bhi user ki Telegram UID (Number baji) se use Premium add ya remove kar sakte hain."
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("➕ Add Premium ID", callback_data="adm_add_prem"),
+         InlineKeyboardButton("🗑️ Remove Premium ID", callback_data="adm_rem_prem")],
+        [InlineKeyboardButton("📜 View Premium Users", callback_data="adm_list_prem")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
     ])
     return text, keyboard
@@ -164,6 +193,11 @@ async def admin_callback(client, query):
         await query.message.edit_text(text, reply_markup=keyboard)
         return
 
+    elif action == "sub_premium":
+        text, keyboard = await get_premium_menu_layout()
+        await query.message.edit_text(text, reply_markup=keyboard)
+        return
+
     # --- TOGGLES ACTIONS ---
     elif action == "toggle_verify":
         new_val = not settings.get("verify_mode", True)
@@ -192,6 +226,121 @@ async def admin_callback(client, query):
         await query.message.edit_text(text, reply_markup=keyboard)
 
     # =============================================================
+    # --- PREMIUM CONTROL ACTIONS (STEP-BY-STEP FLOW) ---
+    # =============================================================
+    elif action == "add_prem":
+        await query.message.delete()
+        
+        # STEP 1: UID (Telegram ID) maangna
+        id_prompt = await client.ask(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        if id_prompt.text.strip() == "/cancel":
+            await id_prompt.delete()
+            text, keyboard = await get_premium_menu_layout()
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+
+        u_input = id_prompt.text.strip()
+        if not u_input.isdigit():
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
+            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
+            return
+
+        target_id = int(u_input)
+        
+        # STEP 2: Dino ki ginti (Days) maangna
+        days_prompt = await client.ask(chat_id, f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n\n*(Example: 30 din ke liye '30' likhein. Cancel ke liye /cancel)*", filters=filters.text)
+        
+        if days_prompt.text.strip() == "/cancel":
+            await id_prompt.delete()
+            await days_prompt.delete()
+            text, keyboard = await get_premium_menu_layout()
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+
+        days_input = days_prompt.text.strip()
+        if not days_input.isdigit() or int(days_input) <= 0:
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
+            await client.send_message(chat_id, "❌ **Invalid Days!** Kripya sirf positive number bhejiyega (jaise: 1, 7, 30).", reply_markup=back_keyboard)
+            return
+            
+        premium_days = int(days_input)
+        
+        # Database functions ko query karna (UID + Days)
+        expiry_date = await db.add_premium_user(target_id, premium_days)
+        formatted_expiry = expiry_date.strftime('%Y-%m-%d %H:%M UTC')
+        
+        success_msg = await client.send_message(
+            chat_id, 
+            f"👑 **ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴛɪᴠᴀᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 **User ID:** `{target_id}`\n"
+            f"⏱️ **Duration:** `{premium_days} Days`\n"
+            f"📅 **Expiry Time:** `{formatted_expiry}`\n\n"
+            f"*Yeh user expiry date aate hi automatic list se remove ho jayega.*"
+        )
+            
+        await asyncio.sleep(4)
+        await success_msg.delete()
+        await id_prompt.delete()
+        await days_prompt.delete()
+        
+        text, keyboard = await get_premium_menu_layout()
+        await client.send_message(chat_id, text, reply_markup=keyboard)
+        return
+
+    elif action == "rem_prem":
+        await query.message.delete()
+        
+        # Remove karne ke liye Khali UID maangna
+        id_prompt = await client.ask(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        if id_prompt.text.strip() == "/cancel":
+            await id_prompt.delete()
+            text, keyboard = await get_premium_menu_layout()
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+
+        u_input = id_prompt.text.strip()
+        if not u_input.isdigit():
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
+            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
+            return
+
+        target_id = int(u_input)
+        is_removed = await db.remove_premium_user(target_id)
+        
+        if is_removed:
+            success_msg = await client.send_message(chat_id, f"🗑️ **User ID** `{target_id}` **Premium List se successfully hata di gayi!**")
+        else:
+            success_msg = await client.send_message(chat_id, f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
+            
+        await asyncio.sleep(3)
+        await success_msg.delete()
+        await id_prompt.delete()
+        
+        text, keyboard = await get_premium_menu_layout()
+        await client.send_message(chat_id, text, reply_markup=keyboard)
+        return
+
+    elif action == "list_prem":
+        try:
+            users = await db.get_all_premium_users()
+        except Exception:
+            users = []
+            
+        if not users:
+            list_text = "<b>ℹ️ Premium user list bilkul khali hai!</b>"
+        else:
+            list_text = "📜 **CURRENT PREMIUM USERS LIST**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            for idx, u_id in enumerate(users, start=1):
+                list_text += f"{idx}. 👤 ID: <code>{u_id}</code>\n"
+        
+        back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_sub_premium")]])
+        await query.message.edit_text(text=list_text, reply_markup=back_keyboard)
+        return
+
+    # =============================================================
     # --- START PAGE CONTROL ACTIONS (TEXT & IMAGE SET/REMOVE) ---
     # =============================================================
     elif action == "set_start_txt":
@@ -205,7 +354,6 @@ async def admin_callback(client, query):
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
-        # 🌟 FIX: start_text ko custom_start_text se replace kiya database update ke liye
         await db.update_setting("custom_start_text", txt_prompt.text.strip())
         success_msg = await client.send_message(chat_id, "✅ **Start page message text update ho gaya!**")
         await asyncio.sleep(3)
@@ -218,7 +366,6 @@ async def admin_callback(client, query):
         return
 
     elif action == "reset_start_txt":
-        # 🌟 FIX: custom_start_text ko reset karega
         await db.update_setting("custom_start_text", None) 
         await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
         settings = await db.get_settings()
