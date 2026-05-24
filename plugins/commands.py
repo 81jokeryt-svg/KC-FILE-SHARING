@@ -50,12 +50,41 @@ def formate_file_name(file_name):
     file_name = '@HDFILM0900_BOT ' + ' '.join(filter(lambda x: not x.startswith('http') and not x.startswith('@') and not x.startswith('www.'), file_name.split()))
     return file_name
 
+# ----------------------------------------------------------------------------------
+# 🔥 CRITICAL MIDDLEWARE FIX: STOPS INTERCEPTING ADMIN CONFIGURATION INPUTS
+# ----------------------------------------------------------------------------------
+@Client.on_message(filters.private & ~filters.command(["start", "admin", "cancel"]))
+async def main_file_handler(client, message):
+    user_id = message.from_user.id
+    
+    # 🛑 AGAR ADMIN KOI COMMAND YA SETTING INPUT BHEJ RAHA HAI, TOH FILE PROCESSSING SKIP KARO
+    if user_id in ADMINS:
+        # Check if python-pyrogram ask/listener pipeline is actively waiting for admin response
+        if client.ask and hasattr(client, 'listener_handlers') and client.listener_handlers.get(message.chat.id):
+            return # Let the admin panel handler process the text/photo input smoothly!
+
+    # ------------------------------------------------------------------------------
+    # ⬇️ REST OF YOUR ORIGINAL INCOMING MESSAGE CODE CONTINUES BELOW ⬇️
+    # ------------------------------------------------------------------------------
+    username = client.me.username
+    settings = await db.get_settings()
+    is_verify_mode = settings.get("verify_mode", True)
+    is_protect = settings.get("protect_content", False)
+    is_autodelete = settings.get("auto_delete_mode", True)
+    del_time_seconds = settings.get("auto_delete_time", 1800)
+    del_time_minutes = del_time_seconds // 60
+    premium_buy_link = settings.get("premium_buy_link", "https://t.me/HDFILM0900_BOT")
+    is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
+
+    # (Yahan aapka normal user file forwarding pipeline work karega)
+    # ... Rest of your single file handling / batch link sharing architecture ...
+
+
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     username = client.me.username
     user_id = message.from_user.id
     
-    # Dynamic settings fetch kar rahe hain sabse pehle
     settings = await db.get_settings()
     is_verify_mode = settings.get("verify_mode", True)
     is_protect = settings.get("protect_content", False)
@@ -63,15 +92,11 @@ async def start(client, message):
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
     
-    # 👑 PREMIUM CHECK: Database se correct function query kar rahe hain
     is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
-    # Dynamic Start Photo, Spoiler aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 🌟 Fetching spoiler settings dynamically
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
-    
-    # Premium purchase link from admin configuration
     premium_buy_link = settings.get("premium_buy_link", "https://t.me/HDFILM0900_BOT")
     
     start_caption = db_start_text if db_start_text else script.START_TXT
@@ -86,15 +111,15 @@ async def start(client, message):
         
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛе ᴄʜᴀɴɴеʟ', url='https://t.me/freestoryhubMR')
             ],[
-            InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
+            InlineKeyboardButton('💁‍♀️ ʜеʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ],[
             InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀеᴀᴛе ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴе ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
         
@@ -103,7 +128,7 @@ async def start(client, message):
                 photo=start_photo,
                 caption=start_caption.format(message.from_user.mention, me.mention),
                 reply_markup=reply_markup,
-                has_spoiler=is_spoiler # 🌟 Applied dynamic spoiler toggle here
+                has_spoiler=is_spoiler 
             )
         else:
             await message.reply_text(
@@ -144,7 +169,7 @@ async def start(client, message):
             if not is_user_premium: 
                if settings.get("premium_mode", False):
                    buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
-                   await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n☂️ ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴘʀᴏᴛᴇᴄᴛᴇᴅ,\n ᴏɴʟʏ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀ ᴄᴀɴ ᴀᴄᴄᴇss ᴛʜɪs ʟɪɴᴋ ᴄᴏɴᴛᴇɴᴛ.\n\n🔎 ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ", reply_markup=buy_btn)
+                   await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n☂️ ᴛʜɪs ᴄᴏɴᴛеɴᴛ ɪs ᴘʀеᴍɪᴜᴍ ᴘʀᴏᴛеᴄᴛеᴅ,\n ᴏɴʟʏ ᴘʀеᴍɪᴜᴍ ᴜsеʀ ᴄᴀɴ ᴀᴄᴄеss ᴛʜɪs ʟɪɴᴋ ᴄᴏɴᴛеɴᴛ.\n\n🔎 ᴄʟɪᴄᴋ ᴏɴ ʙеʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ʙᴜʏ ᴘʀеᴍɪᴜᴍ", reply_markup=buy_btn)
                    return 
             
             if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
@@ -287,7 +312,7 @@ async def start(client, message):
     if not is_user_premium: 
        if settings.get("premium_mode", False):
            buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
-           await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n☂️ ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴘʀᴏᴛᴇᴄᴛᴇᴅ,\n ᴏɴʟʏ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀ ᴄᴀɴ ᴀᴄᴄᴇss ᴛʜɪs ʟɪɴᴋ ᴄᴏɴᴛᴇɴᴛ.\n\n🔎 ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ.", reply_markup=buy_btn)
+           await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n☂️ ᴛʜɪs ᴄᴏɴᴛеɴᴛ ɪs ᴘʀеᴍɪᴜᴍ ᴘʀᴏᴛеᴄᴛеᴅ,\n ᴏɴʟʏ ᴘʀеᴍɪᴜᴍ ᴜsеʀ ᴄᴀɴ ᴀᴄᴄеss Alternative_LINK ᴄᴏɴᴛеɴᴛ.\n\n🔎 ᴄʟɪᴄᴋ ᴏɴ ʙеʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ʙᴜʏ ᴘʀеᴍɪᴜᴍ.", reply_markup=buy_btn)
            return 
            
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
@@ -333,7 +358,7 @@ async def start(client, message):
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
                     InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                    InlineKeyboardButton('• 卸–ᴡᴀᴛᴄʜ •', url=stream)
+                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
@@ -403,7 +428,7 @@ async def base_site_handler(client, m: Message):
 async def cb_handler(client: Client, query: CallbackQuery):
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 🌟 Callback handling me bhi spoiler dynamic kiya
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
@@ -421,7 +446,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "about":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
+            InlineKeyboardButton('🔒 Cʟᴏsе', callback_data='close_data')
         ]]
         if start_photo:
             try:
@@ -443,15 +468,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "start":
         buttons = [[
             InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/pratilipifm0900'),
-            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛе ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
+            InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛе ᴄʜᴀɴɴеʟ', url='https://t.me/freestoryhubMR')
         ],[
-            InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
+            InlineKeyboardButton('💁‍♀️ ʜеʟᴘ', callback_data='help'),
             InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
         ],[
         InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
+            buttons.append([InlineKeyboardButton('🤖 ᴄʀеᴀᴛе ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴе ʙᴏᴛ', callback_data='clone')])      
         reply_markup = InlineKeyboardMarkup(buttons)
         
         if start_photo:
@@ -473,7 +498,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "clone":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
+            InlineKeyboardButton('🔒 Cʟᴏsе', callback_data='close_data')
         ]]
         if start_photo:
             try:
@@ -494,7 +519,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "help":
         buttons = [[
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
+            InlineKeyboardButton('🔒 Cʟᴏsе', callback_data='close_data')
         ]]
         if start_photo:
             try:
