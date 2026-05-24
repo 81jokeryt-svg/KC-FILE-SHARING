@@ -139,11 +139,11 @@ async def get_premium_menu_layout(settings):
     )
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Premium ID", callback_data="adm_add_prem"),
-         InlineKeyboardButton("🗑️ Remove Premium ID", callback_data="adm_rem_prem")],
-        [InlineKeyboardButton("📜 View Premium Users", callback_data="adm_list_prem")],
-        [InlineKeyboardButton("🔗 Set Buy Premium Link", callback_data="adm_set_buy_link")],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+        [InlineKeyboardButton("➕ 𝗔𝗗𝗗 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗨𝗦𝗘𝗥𝗦", callback_data="adm_add_prem")],
+        [InlineKeyboardButton("🗑️ 𝗥𝗘𝗠𝗢𝗩𝗘 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗨𝗦𝗘𝗥𝗦", callback_data="adm_rem_prem")],
+        [InlineKeyboardButton("📜 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗨𝗦𝗘𝗥𝗦 𝗟𝗜𝗦𝗧", callback_data="adm_list_prem")],
+        [InlineKeyboardButton("🔘 𝗦𝗘𝗧 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗕𝗨𝗧𝗧𝗢𝗡 𝗟𝗜𝗡𝗞", callback_data="adm_set_buy_link")],
+        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
 
