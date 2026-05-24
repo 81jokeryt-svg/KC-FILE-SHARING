@@ -66,8 +66,9 @@ async def start(client, message):
     # 👑 FIXED PREMIUM CHECK: Database se correct function query kar rahe hain
     is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
-    # Dynamic Start Photo aur Text settings handle karna
+    # Dynamic Start Photo, Spoiler aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
+    is_spoiler = settings.get("start_spoiler", False) # 👈 Spoiler status fetched here
     db_start_text = settings.get("custom_start_text", None)
     
     # Agar DB mein custom text hai toh wo use hoga, nahi toh script wala default text
@@ -100,7 +101,8 @@ async def start(client, message):
             await message.reply_photo(
                 photo=start_photo,
                 caption=start_caption.format(message.from_user.mention, me.mention),
-                reply_markup=reply_markup
+                reply_markup=reply_markup,
+                has_spoiler=is_spoiler # 👈 Applied spoiler condition here
             )
         else:
             await message.reply_text(
@@ -138,7 +140,7 @@ async def start(client, message):
         try:
             is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
         
-            if not is_user_premium: # <--- 'set' की जगह 'not' करें
+            if not is_user_premium: 
                if settings.get("premium_mode", False):
                    await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
                    return 
@@ -285,7 +287,7 @@ async def start(client, message):
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
     is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
-    if not is_user_premium: # <--- 'set' की जगह 'not' करें
+    if not is_user_premium: 
        if settings.get("premium_mode", False):
            await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
            return 
@@ -331,7 +333,7 @@ async def start(client, message):
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ減ᴅ •", url=download),
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ減–ᴅ •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪcustomɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
@@ -403,6 +405,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     # Dynamic settings loading inside callbacks
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
+    is_spoiler = settings.get("start_spoiler", False) # 👈 Spoiler status for callback routes
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
@@ -428,7 +431,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo)
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
                 )
             except:
                 pass
@@ -459,7 +462,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo)
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
                 )
             except:
                 pass
@@ -480,7 +483,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo)
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
                 )
             except:
                 pass
@@ -501,7 +504,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo)
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
                 )
             except:
                 pass
@@ -511,3 +514,5 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
+
+#start.py
