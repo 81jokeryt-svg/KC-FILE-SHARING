@@ -63,15 +63,17 @@ async def start(client, message):
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
     
-    # 👑 FIXED PREMIUM CHECK: Database se correct function query kar rahe hain
+    # 👑 PREMIUM CHECK: Database se correct function query kar rahe hain
     is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
     # Dynamic Start Photo, Spoiler aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 👈 Spoiler status fetched here
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
     
-    # Agar DB mein custom text hai toh wo use hoga, nahi toh script wala default text
+    # Premium purchase link from admin configuration
+    premium_buy_link = settings.get("premium_buy_link", "https://t.me/HDFILM0900_BOT")
+    
     start_caption = db_start_text if db_start_text else script.START_TXT
 
     if not await db.is_user_exist(user_id):
@@ -87,7 +89,7 @@ async def start(client, message):
             InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/freestoryhubMR')
             ],[
             InlineKeyboardButton('💁‍♀️ ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('😊 ᴀʙᴏᴜᴛ', callback_data='about')
+            InlineKeyboardButton('😊 ᴀʙᴏᴜ通–ᴛ', callback_data='about')
         ],[
             InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
         ]]
@@ -96,13 +98,12 @@ async def start(client, message):
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
         
-        # Photo aur Message donon dynamic ho gaye hain
         if start_photo:
             await message.reply_photo(
                 photo=start_photo,
                 caption=start_caption.format(message.from_user.mention, me.mention),
                 reply_markup=reply_markup,
-                has_spoiler=is_spoiler # 👈 Applied spoiler condition here
+                has_spoiler=is_spoiler 
             )
         else:
             await message.reply_text(
@@ -142,9 +143,11 @@ async def start(client, message):
         
             if not is_user_premium: 
                if settings.get("premium_mode", False):
-                   await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
+                   # 👑 Added Buy Premium Button here for Batch Links
+                   buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
+                   await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।", reply_markup=buy_btn)
                    return 
-            # 🌟 MODIFIED BYPASS: Agar user premium hai toh token check bypass ho jayega
+            
             if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
                 btn = [[
                     InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
@@ -160,13 +163,11 @@ async def start(client, message):
         except Exception as e:
             return await message.reply_text(f"**Error - {e}**")
             
-        # 🔺 Custom Inline Keyboard with CANCEL callback targeted to user_id
         processing_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("👑 DEVELOPER", url="https://t.me/HDFILM0900_BOT")],
             [InlineKeyboardButton("❌ CANCEL", callback_data=f"cancel_batch_{user_id}")]
         ])
         
-        # State initialize kar rahe hain active process ki
         CANCEL_PROCESSING[user_id] = False
 
         sts = await message.reply(
@@ -200,12 +201,10 @@ async def start(client, message):
             
         filesarr = []
         for msg_item in msgs:
-            # 🛑 Loop chalne ke dauran har baar check hoga ki user ne cancel daba diya ya nahi
             if CANCEL_PROCESSING.get(user_id, False):
                 await sts.edit("<b>❌ Batch Processing Cancelled By User!</b>")
                 await asyncio.sleep(3)
                 await sts.delete()
-                # Memory cleanup state
                 if user_id in CANCEL_PROCESSING:
                     del CANCEL_PROCESSING[user_id]
                 return
@@ -267,7 +266,6 @@ async def start(client, message):
                 
         await sts.delete()
         
-        # Safe dictionary cleanup jab loop successfully complete ho jaye
         if user_id in CANCEL_PROCESSING:
             del CANCEL_PROCESSING[user_id]
         
@@ -289,8 +287,11 @@ async def start(client, message):
     is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     if not is_user_premium: 
        if settings.get("premium_mode", False):
-           await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
+           # 👑 Added Buy Premium Button here for Single Links
+           buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
+           await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।", reply_markup=buy_btn)
            return 
+           
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
             InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
@@ -333,10 +334,10 @@ async def start(client, message):
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ減–ᴅ •", url=download),
-                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                    InlineKeyboardButton('• 卸–ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪcustomɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
                 reply_markup=InlineKeyboardMarkup(button)
             else:
@@ -402,14 +403,12 @@ async def base_site_handler(client, m: Message):
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    # Dynamic settings loading inside callbacks
     settings = await db.get_settings()
     start_photo = settings.get("start_photo", None)
-    is_spoiler = settings.get("start_spoiler", False) # 👈 Spoiler status for callback routes
+    is_spoiler = settings.get("start_spoiler", False) 
     db_start_text = settings.get("custom_start_text", None)
     start_caption = db_start_text if db_start_text else script.START_TXT
 
-    # 🛑 CANCEL CALLBACK FUNCTIONALITY FOR ACTIVE BATCHES
     if query.data.startswith("cancel_batch_"):
         target_uid = int(query.data.split("_")[2])
         if query.from_user.id == target_uid:
@@ -431,7 +430,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
                 )
             except:
                 pass
@@ -462,7 +461,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
                 )
             except:
                 pass
@@ -483,7 +482,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
                 )
             except:
                 pass
@@ -504,7 +503,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await client.edit_message_media(
                     query.message.chat.id, 
                     query.message.id, 
-                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) # 👈 Integrated spoiler mode
+                    InputMediaPhoto(start_photo, has_spoiler=is_spoiler) 
                 )
             except:
                 pass
@@ -514,5 +513,3 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
-
-#start.py
