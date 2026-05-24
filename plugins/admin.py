@@ -41,7 +41,7 @@ async def get_main_panel_layout(settings):
         [InlineKeyboardButton("🎨 𝗦𝗧𝗔𝗥𝗧 𝗠𝗘𝗡𝗨", callback_data="adm_sub_start_page")],
         [InlineKeyboardButton("👑 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗠𝗘𝗡𝗨", callback_data="adm_sub_premium")],
         [InlineKeyboardButton(f"🛡️ 𝗣𝗥𝗢𝗧𝗘𝗖𝗧 𝗖𝗢𝗡𝗧𝗘𝗡𝗧: {p_status}", callback_data="adm_toggle_protect")],
-        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
+        [InlineKeyboardButton("Hᴏᴍᴇ", callback_data='start')]
     ])
     return text, keyboard
 
