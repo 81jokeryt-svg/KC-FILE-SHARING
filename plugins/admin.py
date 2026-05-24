@@ -253,6 +253,7 @@ async def admin_callback(client, query):
     # --- PREMIUM CONTROL ACTIONS ---
     # =============================================================
     elif action == "add_prem":
+        await query.answer() 
         await query.message.delete()
         id_prompt = await client.ask(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
@@ -322,6 +323,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "rem_prem":
+        await query.answer() 
         await query.message.delete()
         id_prompt = await client.ask(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
@@ -386,6 +388,7 @@ async def admin_callback(client, query):
     # --- START PAGE CONTROL ACTIONS ---
     # =============================================================
     elif action == "set_start_txt":
+        await query.answer() 
         await query.message.delete()
         txt_prompt = await client.ask(chat_id, "✍️ **Naya /start message text likh kar bhejein:**\n\n*(HTML/Markdown tags use kar sakte hain. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
@@ -408,6 +411,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "reset_start_txt":
+        await query.answer() 
         await db.update_setting("custom_start_text", None) 
         await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
         settings = await db.get_settings()
@@ -416,6 +420,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "set_start_img":
+        await query.answer() 
         await query.message.delete()
         img_prompt = await client.ask(chat_id, "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*")
         
@@ -445,6 +450,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "remove_start_img":
+        await query.answer() 
         await db.update_setting("start_photo", None) 
         await query.answer("Start image successfully remove ho gayi! (Text-Only Mode Enabled) 🗑️", show_alert=True)
         settings = await db.get_settings()
@@ -454,6 +460,7 @@ async def admin_callback(client, query):
 
     # --- EXISTING VALIDATION CONTROLS ---
     elif action == "set_time":
+        await query.answer() 
         await query.message.delete()
         time_msg = await client.ask(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
@@ -481,6 +488,7 @@ async def admin_callback(client, query):
         return
 
     elif action == "set_token_time":
+        await query.answer() 
         await query.message.delete()
         time_msg = await client.ask(chat_id, "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
