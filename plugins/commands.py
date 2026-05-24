@@ -285,11 +285,10 @@ async def start(client, message):
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
     is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
-        
-            if not is_user_premium: # <--- 'set' की जगह 'not' करें
-               if settings.get("premium_mode", False):
-                   await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
-                   return 
+    if not is_user_premium: # <--- 'set' की जगह 'not' करें
+       if settings.get("premium_mode", False):
+           await message.reply_text("👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।")
+           return 
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
             InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
