@@ -57,6 +57,13 @@ async def start(client, message):
     is_autodelete = settings.get("auto_delete_mode", True)
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
+    
+    # 🌟 NEW: Dynamic Start Photo aur Text settings handle karna
+    start_photo = settings.get("start_photo", None)
+    db_start_text = settings.get("custom_start_text", None)
+    
+    # Agar DB mein custom text hai toh wo use hoga, nahi toh script wala default text
+    start_caption = db_start_text if db_start_text else script.START_TXT
 
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
@@ -79,11 +86,24 @@ async def start(client, message):
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
         reply_markup = InlineKeyboardMarkup(buttons)
         me = client.me
-        await message.reply_photo(
-            photo=random.choice(PICS),
-            caption=script.START_TXT.format(message.from_user.mention, me.mention),
-            reply_markup=reply_markup
-        )
+        
+        # 🌟 FIX: Photo aur Message donon dynamic ho gaye hain
+        if start_photo:
+            await message.reply_photo(
+                photo=start_photo,
+                caption=start_caption.format(message.from_user.mention, me.mention),
+                reply_markup=reply_markup
+            )
+        else:
+            # Agar start_photo key None hai ya empty hai, toh photo automatic REMOVE ho jayegi aur simple text jayega
+            if not start_photo and PICS:
+                # Fallback backup agar aap config ke PICS se dikhana chahein toh, warna direct text:
+                pass
+            await message.reply_text(
+                text=start_caption.format(message.from_user.mention, me.mention),
+                reply_markup=reply_markup,
+                protect_content=is_protect
+            )
         return
 
     data = message.command[1]
@@ -194,7 +214,6 @@ async def start(client, message):
                         reply_markup = None
                     
                     await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
-                    # 🌟 FIX: Isme protect_content database ke setting variable se link ho gaya hai
                     msg_out = await info.copy(chat_id=message.from_user.id, caption=f_caption, protect_content=is_protect, reply_markup=reply_markup)
                 else:
                     await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
@@ -212,7 +231,6 @@ async def start(client, message):
                 
         await sts.delete()
         
-        # 🌟 FIX: Auto Delete dynamic timer implement ho gaya hai panel data ke saath
         if is_autodelete == True:
             k = await client.send_message(chat_id=message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
@@ -282,13 +300,11 @@ async def start(client, message):
             await client.send_chat_action(message.chat.id, enums.ChatAction.UPLOAD_DOCUMENT)
             await asyncio.sleep(1) 
             
-            # 🌟 FIX: Single file block me protect_content fully linked
             del_msg = await msg.copy(chat_id=message.from_user.id, caption=f_caption, reply_markup=reply_markup, protect_content=is_protect)
         else:
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             del_msg = await msg.copy(chat_id=message.from_user.id, protect_content=is_protect)
             
-        # 🌟 FIX: Single file auto delete dynamic sync with DB
         if is_autodelete == True:
             k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie File/Video will be deleted in <b><u>{del_time_minutes} minutes</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this File/Video to your Saved Messages and Start Download there</b>")
             await asyncio.sleep(del_time_seconds)
@@ -341,6 +357,12 @@ async def base_site_handler(client, m: Message):
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
+    # Dynamic settings loading inside callbacks
+    settings = await db.get_settings()
+    start_photo = settings.get("start_photo", None)
+    db_start_text = settings.get("custom_start_text", None)
+    start_caption = db_start_text if db_start_text else script.START_TXT
+
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "about":
@@ -348,11 +370,16 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
+        # 🌟 FIX: Agar start_photo hai tabhi edit_message_media chalega, nahi toh purani photo text mein convert ho jayegi bina error ke
+        if start_photo:
+            try:
+                await client.edit_message_media(
+                    query.message.chat.id, 
+                    query.message.id, 
+                    InputMediaPhoto(start_photo)
+                )
+            except:
+                pass
         reply_markup = InlineKeyboardMarkup(buttons)
         me2 = (await client.get_me()).mention
         await query.message.edit_text(
@@ -374,14 +401,19 @@ async def cb_handler(client: Client, query: CallbackQuery):
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
         reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
+        
+        if start_photo:
+            try:
+                await client.edit_message_media(
+                    query.message.chat.id, 
+                    query.message.id, 
+                    InputMediaPhoto(start_photo)
+                )
+            except:
+                pass
         me2 = (await client.get_me()).mention
         await query.message.edit_text(
-            text=script.START_TXT.format(query.from_user.mention, me2),
+            text=start_caption.format(query.from_user.mention, me2),
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
@@ -391,11 +423,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
+        if start_photo:
+            try:
+                await client.edit_message_media(
+                    query.message.chat.id, 
+                    query.message.id, 
+                    InputMediaPhoto(start_photo)
+                )
+            except:
+                pass
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.message.edit_text(
             text=script.CLONE_TXT.format(query.from_user.mention),
@@ -408,11 +444,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
             InlineKeyboardButton('🔒 Cʟᴏsᴇ', callback_data='close_data')
         ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
+        if start_photo:
+            try:
+                await client.edit_message_media(
+                    query.message.chat.id, 
+                    query.message.id, 
+                    InputMediaPhoto(start_photo)
+                )
+            except:
+                pass
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.message.edit_text(
             text=script.HELP_TXT,
