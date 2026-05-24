@@ -136,8 +136,7 @@ async def start(client, message):
     # 2. HANDLE BATCH LINKS
         
     elif data.split("-", 1)[0] == "BATCH":
-        # --- NEW PREMIUM/VERIFY GATEKEEPER START ---
-        # 1. प्रीमियम चेक करें
+       try: 
         is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
         
         if not is_user_premium:
