@@ -112,7 +112,7 @@ async def start(client, message):
 
     data = message.command[1]
     
-    # 1. HANDLE VERIFICATION LINKS (UPDATED 🚀)
+    # 1. HANDLE VERIFICATION LINKS
     if data.split("-", 1)[0] == "verify":
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
@@ -123,18 +123,9 @@ async def start(client, message):
             await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
             await asyncio.sleep(1)
             
-            # Yahan target token (file/batch parameter) fetch kar ke button link banaya gaya hai
-            file_token = data.split("-", 3)[3] if len(data.split("-")) > 3 else ""
-            get_file_url = f"https://telegram.me/{username}?start={file_token}" if file_token else f"https://telegram.me/{username}?start=true"
-            
-            get_file_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("📥 ɢᴇᴛ ғɪʟᴇ 📥", url=get_file_url)]
-            ])
-            
             success_msg = await message.reply_text(
                 text=script.VERIFIED_SUCCESS_TXT.format(message.from_user.mention),
-                protect_content=is_protect,
-                reply_markup=get_file_keyboard
+                protect_content=is_protect
             )
             asyncio.create_task(auto_delete_msg(success_msg, 300))
             await verify_user(client, userid, token)
@@ -148,7 +139,7 @@ async def start(client, message):
             # 🌟 MODIFIED BYPASS: Agar user premium hai toh token check bypass ho jayega
             if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
                 btn = [[
-                    InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start={data}")),
+                    InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
                     InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
                 not_verified_msg = await message.reply_text(
@@ -289,7 +280,7 @@ async def start(client, message):
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
-            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start={data}")),
+            InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
             InlineKeyboardButton("⁉️ 𝚃𝚄𝚃𝙾𝚁𝙸𝙰𝙻 ⁉️", url=VERIFY_TUTORIAL)
                 ]]
         not_verified_msg = await message.reply_text(
@@ -329,10 +320,10 @@ async def start(client, message):
                 stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
-                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+                    InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀ減ᴅ •", url=download),
                     InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
-                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪn ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+                    InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪcustomɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
                 reply_markup=InlineKeyboardMarkup(button)
             else:
