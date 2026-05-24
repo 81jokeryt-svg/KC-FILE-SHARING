@@ -2,7 +2,9 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
-from dbusers import db  # Agar aapki DB file ka naam alag hai to modify karein
+from utils import *
+from plugins.dbusers import *
+
 
 # 🛠️ Command to open Admin Panel
 @Client.on_message(filters.command("admin") & filters.user(ADMINS))
