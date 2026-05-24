@@ -1,18 +1,21 @@
 
 
 class script(object):
-    START_TXT = """<b>ʜᴇʟʟᴏ {}, ᴍʏ ɴᴀᴍᴇ {} 👋, ɪ ᴀᴍ ʟᴀᴛᴇꜱᴛ ᴀᴅᴠᴀɴᴄᴇᴅ ᴀɴᴅ ᴘᴏᴡᴇʀꜰᴜʟ ꜰɪʟᴇ ꜱᴛᴏʀᴇ ʙᴏᴛ + ᴄʟᴏɴᴇ ғᴇᴀᴛᴜʀᴇ + sᴛʀᴇᴀᴍ / ᴅᴏᴡɴʟᴏᴀᴅ ʟɪɴᴋ ғᴇᴀᴛᴜʀᴇ + ᴄᴜꜱᴛᴏᴍ ᴜʀʟ ꜱʜᴏʀᴛɴᴇʀ ꜱᴜᴘᴘᴏʀᴛ + ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ sᴜᴘᴘᴏʀᴛ ᴀɴᴅ ʙᴇꜱᴛ ᴜɪ ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ </b>"""
+    START_TXT = """<b><blockquote>ʜᴇʟʟᴏ {} ,
+ɪ ᴀᴍ ᴀ ᴘᴇʀᴍᴇɴᴀɴᴛ ғɪʟᴇ sᴛᴏʀᴇ ʙᴏᴛ ᴀɴᴅ ᴜsᴇʀs ᴄᴀɴ ᴀᴄᴄᴇss sᴛᴏʀᴇᴅ ᴍᴇssᴀɢᴇs ʙʏ ᴜsɪɴɢ ᴀ sʜᴀʀᴇᴀʙʟᴇ ʟɪɴᴋ ɢɪᴠᴇɴ ʙʏ ᴍᴇ
+
+ᴛᴏ ᴋɴᴏᴡ ᴍᴏʀᴇ ᴄʟɪᴄᴋ ʜᴇʟᴘ ʙᴜᴛᴛᴏɴ.</blockquote></b>
 
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
     
-    CAPTION = """<b>📂 ғɪʟᴇɴᴀᴍᴇ : {file_name}
+    CAPTION = """<b><blockquote>📂 ғɪʟᴇɴᴀᴍᴇ : {file_name}
 
 ⚙️ sɪᴢᴇ : {file_size}
 
-Jᴏɪɴ [ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ](https://t.me/freestoryhubMR)</b>""" 
+Jᴏɪɴ [ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ](https://t.me/freestoryhubMR)</b></blockquote>""" 
 
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
@@ -40,9 +43,7 @@ If You Want To Remove Api Then Copy This And Send To Bot - `/api None`"""
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-    ABOUT_TXT = """<b>ʜɪ ɪ ᴀᴍ ᴘᴇʀᴍᴀɴᴇɴᴛ ғɪʟᴇ sᴛᴏʀᴇ ʙᴏᴛ ᴡɪᴛʜ ᴄʟᴏɴᴇ ғᴇᴀᴛᴜʀᴇ + ᴄᴜsᴛᴏᴍ ᴜʀʟ sʜᴏʀᴛɴᴇʀ ɪᴛ ᴍᴇᴀɴs ᴀɴʏ ᴜsᴇʀ ᴄᴀɴ sᴇᴛ ʜɪs ᴜʀʟ sʜᴏʀᴛɴᴇʀ ᴀɴᴅ + ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ.
-
-🤖 ᴍʏ ɴᴀᴍᴇ: {}
+    ABOUT_TXT = """<b><blockquote>🤖 ᴍʏ ɴᴀᴍᴇ: {}
 
 📝 ʟᴀɴɢᴜᴀɢᴇ: <a href=https://www.python.org>𝐏𝐲𝐭𝐡𝐨𝐧𝟑</a>
 
@@ -52,7 +53,7 @@ If You Want To Remove Api Then Copy This And Send To Bot - `/api None`"""
 
 👥 STORY REQUEST GROUP: <a href=https://t.me/pratilipifm0900>CLICK HERE </a>
 
-📢 STORY CHANNEL: <a href=https://t.me/freestoryhubMR>CLICK HERE</a></b>
+📢 STORY CHANNEL: <a href=https://t.me/freestoryhubMR>CLICK HERE</a></b></blockquote>
 """
 
     CABOUT_TXT = """<b>ʜɪ ɪ ᴀᴍ ᴘᴇʀᴍᴀɴᴇɴᴛ ғɪʟᴇ sᴛᴏʀᴇ ʙᴏᴛ ᴡɪᴛʜ ᴄʟᴏɴᴇ ғᴇᴀᴛᴜʀᴇ + ᴄᴜsᴛᴏᴍ ᴜʀʟ sʜᴏʀᴛɴᴇʀ ɪᴛ ᴍᴇᴀɴs ᴀɴʏ ᴜsᴇʀ ᴄᴀɴ sᴇᴛ ʜɪs ᴜʀʟ sʜᴏʀᴛɴᴇʀ ᴀɴᴅ + ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ.
@@ -86,7 +87,7 @@ First Send /clone command then follow below steps.
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-    HELP_TXT = """<b><u>💢 HOW TO USE THE BOT ☺️</u>
+    HELP_TXT = """<blockquote><b><u>💢 HOW TO USE THE BOT ☺️</u>
 
 🔻 /link - ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴠɪᴅᴇᴏ ᴏʀ ғɪʟᴇ ᴛᴏ ɢᴇᴛ sʜᴀʀᴀʙʟᴇ ʟɪɴᴋ
 
@@ -103,7 +104,7 @@ First Send /clone command then follow below steps.
 
 🔻 /deletecloned - ᴜsᴇ ᴛʜɪs ғᴏʀ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴄʟᴏɴᴇ ʙᴏᴛ 
 
-🔻 /broadcast - ʀᴇᴘʟʏ ᴛᴏ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ (ʙᴏᴛ ᴏᴡɴᴇʀ ᴏɴʟʏ)</b>"""
+🔻 /broadcast - ʀᴇᴘʟʏ ᴛᴏ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ (ʙᴏᴛ ᴏᴡɴᴇʀ ᴏɴʟʏ)</b></blockquote>"""
 
 # Don't Remove Credit Tg - @VJ_Bots
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
