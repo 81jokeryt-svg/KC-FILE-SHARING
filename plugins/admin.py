@@ -3,6 +3,7 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
 from plugins.dbusers import *
+from utils import *
 
 @Client.on_message(filters.command("admin") & filters.user(ADMINS))
 async def admin_panel(client, message):
