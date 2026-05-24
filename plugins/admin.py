@@ -254,7 +254,6 @@ async def admin_callback(client, query):
             keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
 
-    # 🌟 NEW TOGGLE ACTION: START PHOTO SPOILER BUTTON
     elif action == "toggle_spoiler":
         new_val = not settings.get("start_spoiler", False)
         await db.update_setting("start_spoiler", new_val)
@@ -265,15 +264,20 @@ async def admin_callback(client, query):
         return
 
     # =============================================================
-    # --- PREMIUM CONTROL ACTIONS ---
+    # --- PREMIUM CONTROL ACTIONS (FIXED PROMPT DELETION) ---
     # =============================================================
     elif action == "add_prem":
         await query.answer() 
         await query.message.delete()
-        id_prompt = await client.ask(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        prompt_msg1 = await client.send_message(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*")
+        id_prompt = await client.listen(chat_id, filters=filters.text)
         
         if id_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
+            try: await prompt_msg1.delete()
+            except: pass
+            try: await id_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -281,16 +285,28 @@ async def admin_callback(client, query):
 
         u_input = id_prompt.text.strip()
         if not u_input.isdigit():
+            try: await prompt_msg1.delete()
+            except: pass
+            try: await id_prompt.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
             return
 
         target_id = int(u_input)
-        days_prompt = await client.ask(chat_id, f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n\n*(Example: 30 din ke liye '30' likhein. Cancel ke liye /cancel)*", filters=filters.text)
+        try: await prompt_msg1.delete()
+        except: pass
+        
+        prompt_msg2 = await client.send_message(chat_id, f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n\n*(Example: 30 din ke liye '30' likhein. Cancel ke liye /cancel)*")
+        days_prompt = await client.listen(chat_id, filters=filters.text)
         
         if days_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
-            await days_prompt.delete()
+            try: await id_prompt.delete()
+            except: pass
+            try: await prompt_msg2.delete()
+            except: pass
+            try: await days_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -298,6 +314,12 @@ async def admin_callback(client, query):
 
         days_input = days_prompt.text.strip()
         if not days_input.isdigit() or int(days_input) <= 0:
+            try: await id_prompt.delete()
+            except: pass
+            try: await prompt_msg2.delete()
+            except: pass
+            try: await days_prompt.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
             await client.send_message(chat_id, "❌ **Invalid Days!** Kripya sirf positive number bhejiyega (jaise: 1, 7, 30).", reply_markup=back_keyboard)
             return
@@ -331,9 +353,14 @@ async def admin_callback(client, query):
             logger.error(f"Could not send premium activation alert to {target_id}: {e}")
             
         await asyncio.sleep(4)
-        await success_msg.delete()
-        await id_prompt.delete()
-        await days_prompt.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await id_prompt.delete()
+        except: pass
+        try: await prompt_msg2.delete()
+        except: pass
+        try: await days_prompt.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_premium_menu_layout(settings)
@@ -343,10 +370,15 @@ async def admin_callback(client, query):
     elif action == "rem_prem":
         await query.answer() 
         await query.message.delete()
-        id_prompt = await client.ask(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        prompt_msg = await client.send_message(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*")
+        id_prompt = await client.listen(chat_id, filters=filters.text)
         
         if id_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await id_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -354,6 +386,10 @@ async def admin_callback(client, query):
 
         u_input = id_prompt.text.strip()
         if not u_input.isdigit():
+            try: await prompt_msg.delete()
+            except: pass
+            try: await id_prompt.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
             return
@@ -379,8 +415,12 @@ async def admin_callback(client, query):
             success_msg = await client.send_message(chat_id, f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
             
         await asyncio.sleep(3)
-        await success_msg.delete()
-        await id_prompt.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await prompt_msg.delete()
+        except: pass
+        try: await id_prompt.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_premium_menu_layout(settings)
@@ -388,10 +428,8 @@ async def admin_callback(client, query):
         return
 
     elif action == "list_prem":
-        try:
-            users = await db.get_all_premium_users()
-        except Exception:
-            users = []
+        try: users = await db.get_all_premium_users()
+        except Exception: users = []
             
         if not users:
             list_text = "<b>ℹ️ Premium user list bilkul khali hai!</b>"
@@ -407,10 +445,15 @@ async def admin_callback(client, query):
     elif action == "set_buy_link":
         await query.answer()
         await query.message.delete()
-        link_prompt = await client.ask(chat_id, "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n\n*(Ex: `https://t.me/your_username` ya payment website link. Cancel ke liye /cancel)*", filters=filters.text)
+        
+        prompt_msg = await client.send_message(chat_id, "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n\n*(Ex: `https://t.me/your_username` ya payment website link. Cancel ke liye /cancel)*")
+        link_prompt = await client.listen(chat_id, filters=filters.text)
         
         if link_prompt.text.strip() == "/cancel":
-            await link_prompt.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await link_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_premium_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -421,8 +464,12 @@ async def admin_callback(client, query):
         
         success_msg = await client.send_message(chat_id, f"✅ **Premium Buy Link updated successfully!**\n\n`{new_link}`")
         await asyncio.sleep(3)
-        await success_msg.delete()
-        await link_prompt.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await prompt_msg.delete()
+        except: pass
+        try: await link_prompt.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_premium_menu_layout(settings)
@@ -430,15 +477,20 @@ async def admin_callback(client, query):
         return
 
     # =============================================================
-    # --- START PAGE CONTROL ACTIONS ---
+    # --- START PAGE CONTROL ACTIONS (FIXED PROMPT DELETION) ---
     # =============================================================
     elif action == "set_start_txt":
         await query.answer() 
         await query.message.delete()
-        txt_prompt = await client.ask(chat_id, "✍️ **Naya /start message text likh kar bhejein:**\n\n*(HTML/Markdown tags use kar sakte hain. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        prompt_msg = await client.send_message(chat_id, "✍️ **Naya /start message text likh kar bhejein:**\n\n*(HTML/Markdown tags use kar sakte hain. Cancel karne ke liye /cancel likhein)*")
+        txt_prompt = await client.listen(chat_id, filters=filters.text)
         
         if txt_prompt.text.strip() == "/cancel":
-            await txt_prompt.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await txt_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_start_page_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -447,8 +499,12 @@ async def admin_callback(client, query):
         await db.update_setting("custom_start_text", txt_prompt.text.strip())
         success_msg = await client.send_message(chat_id, "✅ **Start page message text update ho gaya!**")
         await asyncio.sleep(3)
-        await success_msg.delete()
-        await txt_prompt.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await prompt_msg.delete()
+        except: pass
+        try: await txt_prompt.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_start_page_menu_layout(settings)
@@ -467,16 +523,25 @@ async def admin_callback(client, query):
     elif action == "set_start_img":
         await query.answer() 
         await query.message.delete()
-        img_prompt = await client.ask(chat_id, "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*")
+        
+        prompt_msg = await client.send_message(chat_id, "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*")
+        img_prompt = await client.listen(chat_id)
         
         if img_prompt.text and img_prompt.text.strip() == "/cancel":
-            await img_prompt.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await img_prompt.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_start_page_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
         if not img_prompt.photo:
+            try: await prompt_msg.delete()
+            except: pass
+            try: await img_prompt.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_start_page")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.", reply_markup=back_keyboard)
             return
@@ -486,8 +551,12 @@ async def admin_callback(client, query):
         
         success_msg = await client.send_message(chat_id, "✅ **Start Page Image updated successfully!**")
         await asyncio.sleep(3)
-        await success_msg.delete()
-        await img_prompt.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await prompt_msg.delete()
+        except: pass
+        try: await img_prompt.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_start_page_menu_layout(settings)
@@ -503,14 +572,19 @@ async def admin_callback(client, query):
         await query.message.edit_text(text, reply_markup=keyboard)
         return
 
-    # --- EXISTING VALIDATION CONTROLS ---
+    # --- EXISTING VALIDATION CONTROLS (FIXED PROMPT DELETION) ---
     elif action == "set_time":
         await query.answer() 
         await query.message.delete()
-        time_msg = await client.ask(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        prompt_msg = await client.send_message(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*")
+        time_msg = await client.listen(chat_id, filters=filters.text)
         
         if time_msg.text.strip() == "/cancel":
-            await time_msg.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_delete_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -521,13 +595,21 @@ async def admin_callback(client, query):
             await db.update_setting("auto_delete_time", minutes * 60)
             success_msg = await client.send_message(chat_id, f"✅ Auto-Delete timer set to **{minutes} Minutes**!")
             await asyncio.sleep(3)
-            await success_msg.delete()
-            await time_msg.delete()
+            try: await success_msg.delete()
+            except: pass
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             
             settings = await db.get_settings()
             text, keyboard = await get_delete_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
         except ValueError:
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_delete")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Only clean numbers are allowed.", reply_markup=back_keyboard)
         return
@@ -535,10 +617,15 @@ async def admin_callback(client, query):
     elif action == "set_token_time":
         await query.answer() 
         await query.message.delete()
-        time_msg = await client.ask(chat_id, "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        
+        prompt_msg = await client.send_message(chat_id, "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*")
+        time_msg = await client.listen(chat_id, filters=filters.text)
         
         if time_msg.text.strip() == "/cancel":
-            await time_msg.delete()
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
@@ -549,13 +636,21 @@ async def admin_callback(client, query):
             await db.update_setting("verify_expire_time", hours * 3600)
             success_msg = await client.send_message(chat_id, f"✅ Token validity set to **{hours} Hours**!")
             await asyncio.sleep(3)
-            await success_msg.delete()
-            await time_msg.delete()
+            try: await success_msg.delete()
+            except: pass
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
         except ValueError:
+            try: await prompt_msg.delete()
+            except: pass
+            try: await time_msg.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Only integers/numbers are allowed.", reply_markup=back_keyboard)
         return
@@ -563,33 +658,55 @@ async def admin_callback(client, query):
     elif action == "change_link":
         await query.message.delete()
         
-        site_msg = await client.ask(chat_id, "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `linkshortify.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        prompt_msg1 = await client.send_message(chat_id, "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `linkshortify.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*")
+        site_msg = await client.listen(chat_id, filters=filters.text)
         new_site = site_msg.text.strip()
         
         if new_site == "/cancel":
-            await site_msg.delete()
+            try: await prompt_msg1.delete()
+            except: pass
+            try: await site_msg.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
         if not is_valid_domain(new_site):
+            try: await prompt_msg1.delete()
+            except: pass
+            try: await site_msg.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
             await client.send_message(chat_id, "❌ **Invalid Domain Format!**\nUse explicit domain formats like `site.com` or `api.cc` without protocols.", reply_markup=back_keyboard)
             return
 
-        api_msg = await client.ask(chat_id, "🔑 **Us Website ki API Key bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
+        try: await prompt_msg1.delete()
+        except: pass
+        
+        prompt_msg2 = await client.send_message(chat_id, "🔑 **Us Website ki API Key bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*")
+        api_msg = await client.listen(chat_id, filters=filters.text)
         new_api = api_msg.text.strip()
         
         if new_api == "/cancel":
-            await site_msg.delete()
-            await api_msg.delete()
+            try: await site_msg.delete()
+            except: pass
+            try: await prompt_msg2.delete()
+            except: pass
+            try: await api_msg.delete()
+            except: pass
             settings = await db.get_settings()
             text, keyboard = await get_verify_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
             return
 
         if not is_valid_api(new_api):
+            try: await site_msg.delete()
+            except: pass
+            try: await prompt_msg2.delete()
+            except: pass
+            try: await api_msg.delete()
+            except: pass
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
             await client.send_message(chat_id, "❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid alphanumeric sequences.", reply_markup=back_keyboard)
             return
@@ -599,9 +716,14 @@ async def admin_callback(client, query):
         
         success_msg = await client.send_message(chat_id, "✅ **Shortener Details Updated Successfully!**")
         await asyncio.sleep(3)
-        await success_msg.delete()
-        await site_msg.delete()
-        await api_msg.delete()
+        try: await success_msg.delete()
+        except: pass
+        try: await site_msg.delete()
+        except: pass
+        try: await prompt_msg2.delete()
+        except: pass
+        try: await api_msg.delete()
+        except: pass
         
         settings = await db.get_settings()
         text, keyboard = await get_verify_menu_layout(settings)
