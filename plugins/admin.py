@@ -35,6 +35,7 @@ async def get_main_panel_layout(settings):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔐 VERIFICATION MENU", callback_data="adm_sub_verify")],
         [InlineKeyboardButton("⏱️ AUTO DELETE MENU", callback_data="adm_sub_delete")],
+        [InlineKeyboardButton("🎨 START PAGE CUSTOMIZER", callback_data="adm_sub_start_page")],
         [InlineKeyboardButton(f"🛡️ PROTECT CONTENT: {p_status}", callback_data="adm_toggle_protect")],
         [InlineKeyboardButton("❌ Close Panel", callback_data="close_data")]
     ])
@@ -79,6 +80,30 @@ async def get_delete_menu_layout(settings):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(f"Auto Delete Mode: {d_status}", callback_data="adm_toggle_delete")],
         [InlineKeyboardButton("Set Delete Timer ⏱️", callback_data="adm_set_time")],
+        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+    ])
+    return text, keyboard
+
+# -------------------------------------------------------------
+# 4. START PAGE SUB-MENU LAYOUT (NEWLY ADDED)
+# -------------------------------------------------------------
+async def get_start_page_menu_layout(settings):
+    has_photo = "🟢 Set (Custom)" if settings.get("start_photo") else "🔴 Not Set (Text Only)"
+    has_text = "🟢 Custom Text Enabled" if settings.get("start_text") else "⚪ Default Text Enabled"
+    
+    text = (
+        "🎨 **START PAGE CONFIGURATION**\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🖼️ **Start Photo Status:** `{has_photo}`\n"
+        f"📝 **Start Text Status:** `{has_text}`\n\n"
+        "Aap niche diye gaye button se live /start command ke message aur photo badal sakte hain."
+    )
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✍️ Set Start Text", callback_data="adm_set_start_txt"), 
+         InlineKeyboardButton("🗑️ Reset Start Text", callback_data="adm_reset_start_txt")],
+        [InlineKeyboardButton("🖼️ Set Start Photo", callback_data="adm_set_start_img"), 
+         InlineKeyboardButton("🗑️ Remove Start Photo", callback_data="adm_remove_start_img")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
     ])
     return text, keyboard
@@ -132,6 +157,11 @@ async def admin_callback(client, query):
         text, keyboard = await get_delete_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
+        
+    elif action == "sub_start_page":
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
+        return
 
     # --- TOGGLES ACTIONS ---
     elif action == "toggle_verify":
@@ -159,8 +189,79 @@ async def admin_callback(client, query):
         if "🔙 Back to Home" in str(query.message.reply_markup):
             keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
+
+    # =============================================================
+    # --- START PAGE CONTROL ACTIONS (TEXT & IMAGE SET/REMOVE) ---
+    # =============================================================
+    elif action == "set_start_txt":
+        await query.message.delete()
+        txt_prompt = await client.ask(chat_id, "✍️ **Naya /start message text likh kar bhejein:**\n\n*(HTML/Markdown tags use kar sakte hain. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
-    # --- INPUT SETTINGS WITH FIXED INLINE BACK ACTION ---
+        if txt_prompt.text.strip() == "/cancel":
+            await txt_prompt.delete()
+            settings = await db.get_settings()
+            text, keyboard = await get_start_page_menu_layout(settings)
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+
+        await db.update_setting("start_text", txt_prompt.text.strip())
+        success_msg = await client.send_message(chat_id, "✅ **Start page message text update ho gaya!**")
+        await asyncio.sleep(3)
+        await success_msg.delete()
+        await txt_prompt.delete()
+        
+        settings = await db.get_settings()
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await client.send_message(chat_id, text, reply_markup=keyboard)
+        return
+
+    elif action == "reset_start_txt":
+        await db.update_setting("start_text", None) # None karne par default state par chala jayega
+        await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
+        settings = await db.get_settings()
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
+        return
+
+    elif action == "set_start_img":
+        await query.message.delete()
+        img_prompt = await client.ask(chat_id, "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*")
+        
+        if img_prompt.text and img_prompt.text.strip() == "/cancel":
+            await img_prompt.delete()
+            settings = await db.get_settings()
+            text, keyboard = await get_start_page_menu_layout(settings)
+            await client.send_message(chat_id, text, reply_markup=keyboard)
+            return
+
+        if not img_prompt.photo:
+            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_start_page")]])
+            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.", reply_markup=back_keyboard)
+            return
+            
+        # Extract highest quality photo file_id string
+        file_id = img_prompt.photo.file_id
+        await db.update_setting("start_photo", file_id)
+        
+        success_msg = await client.send_message(chat_id, "✅ **Start Page Image updated successfully!**")
+        await asyncio.sleep(3)
+        await success_msg.delete()
+        await img_prompt.delete()
+        
+        settings = await db.get_settings()
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await client.send_message(chat_id, text, reply_markup=keyboard)
+        return
+
+    elif action == "remove_start_img":
+        await db.update_setting("start_photo", None) # Database me clear control string save karega
+        await query.answer("Start image successfully remove ho gayi! (Text-Only Mode Enabled) 🗑️", show_alert=True)
+        settings = await db.get_settings()
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
+        return
+
+    # --- EXISTING VALIDATION CONTROLS ---
     elif action == "set_time":
         await query.message.delete()
         time_msg = await client.ask(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
@@ -180,12 +281,10 @@ async def admin_callback(client, query):
             await success_msg.delete()
             await time_msg.delete()
             
-            # Valid case: Send standard menu automatically
             settings = await db.get_settings()
             text, keyboard = await get_delete_menu_layout(settings)
             await client.send_message(chat_id, text, reply_markup=keyboard)
         except ValueError:
-            # Invalid case: Send crisp error message with a manual Back Button
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_delete")]])
             await client.send_message(chat_id, "❌ **Invalid Format!** Only clean numbers are allowed.", reply_markup=back_keyboard)
         return
@@ -220,7 +319,6 @@ async def admin_callback(client, query):
     elif action == "change_link":
         await query.message.delete()
         
-        # 1. Ask Domain
         site_msg = await client.ask(chat_id, "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `linkshortify.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         new_site = site_msg.text.strip()
         
@@ -232,12 +330,10 @@ async def admin_callback(client, query):
             return
 
         if not is_valid_domain(new_site):
-            # Invalid Domain: Inline Back button configuration
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
             await client.send_message(chat_id, "❌ **Invalid Domain Format!**\nUse explicit domain formats like `site.com` or `api.cc` without protocols.", reply_markup=back_keyboard)
             return
 
-        # 2. Ask API
         api_msg = await client.ask(chat_id, "🔑 **Us Website ki API Key bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
         new_api = api_msg.text.strip()
         
@@ -250,12 +346,10 @@ async def admin_callback(client, query):
             return
 
         if not is_valid_api(new_api):
-            # Invalid API: Inline Back button configuration
             back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
             await client.send_message(chat_id, "❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid alphanumeric sequences.", reply_markup=back_keyboard)
             return
         
-        # All validation passed successfully
         await db.update_setting("shortlink_url", new_site)
         await db.update_setting("shortlink_api", new_api)
         
