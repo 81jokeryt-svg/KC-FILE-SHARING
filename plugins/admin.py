@@ -63,11 +63,11 @@ async def get_verify_menu_layout(settings):
     )
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"Verification Mode: {v_status}", callback_data="adm_toggle_verify")],
-        [InlineKeyboardButton(f"Premium Mode (Lock File): {prem_mode_status}", callback_data="adm_toggle_premium_mode")],
-        [InlineKeyboardButton("Set Token Validity 🔑", callback_data="adm_set_token_time")],
-        [InlineKeyboardButton("Change Shortener Link & API 🔗", callback_data="adm_change_link")],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="adm_back_main")]
+        [InlineKeyboardButton(f"𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗠𝗢𝗗𝗘: {v_status}", callback_data="adm_toggle_verify")],
+        [InlineKeyboardButton(f"𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗠𝗢𝗗𝗘: {prem_mode_status}", callback_data="adm_toggle_premium_mode")],
+        [InlineKeyboardButton("𝗦𝗘𝗧 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗜𝗠𝗘 🔑", callback_data="adm_set_token_time")],
+        [InlineKeyboardButton("𝗦𝗘𝗧 𝗦𝗛𝗢𝗥𝗧𝗡𝗘𝗥 $  𝗔𝗣𝗜 𝗜𝗗 🔗", callback_data="adm_change_link")],
+        [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
 
