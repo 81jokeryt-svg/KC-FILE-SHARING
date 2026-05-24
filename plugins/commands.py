@@ -61,8 +61,8 @@ async def start(client, message):
     del_time_seconds = settings.get("auto_delete_time", 1800)
     del_time_minutes = del_time_seconds // 60
     
-    # 🌟 PREMIUM CHECK: Database se user premium status check kar rahe hain
-    is_premium = await db.is_user_premium(user_id) if hasattr(db, 'is_user_premium') else False
+    # 👑 FIXED PREMIUM CHECK: Database se correct function query kar rahe hain
+    is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
     # Dynamic Start Photo aur Text settings handle karna
     start_photo = settings.get("start_photo", None)
@@ -134,7 +134,7 @@ async def start(client, message):
     # 2. HANDLE BATCH LINKS
     elif data.split("-", 1)[0] == "BATCH":
         try:
-            # 🌟 MODIFIED: Agar user premium hai toh token check bypass ho jayega
+            # 🌟 MODIFIED BYPASS: Agar user premium hai toh token check bypass ho jayega
             if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
                 btn = [[
                     InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
@@ -249,7 +249,7 @@ async def start(client, message):
         return
 
     # 3. HANDLE SINGLE FILE / PHOTO LINKS
-    # 🌟 MODIFIED: Premium check for single files verification bypass
+    # 🌟 MODIFIED BYPASS: Premium check for single files verification bypass
     if not is_premium and is_verify_mode == True and not await check_verification(client, user_id):
         btn = [[
             InlineKeyboardButton("🌀 𝚅𝙴𝚁𝙸𝙵𝚈 🌀", url=await get_token(client, user_id, f"https://telegram.me/{username}?start=")),
