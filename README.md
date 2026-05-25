@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.ibb.co/dJ0gpJf1/photo-2025-06-16-12-07-05-7516517596376596504.jpg" alt="VJ-FILE-STORE-BOT Logo">
+  <img src="https://i.ibb.co/mFMzXrRX/photo-2026-05-25-10-39-48-7643777348508057624.jpg" alt="AC FILE SHARING BOT Logo">
 </p>
 <h1 align="center">
   VJ FILE STORE BOT
