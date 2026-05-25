@@ -338,7 +338,7 @@ async def start(client, message):
                 download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
                 button = [[
                     InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                    InlineKeyboardButton('• 卸–ᴡᴀᴛᴄʜ •', url=stream)
+                    InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
                 ],[
                     InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
                 ]]
@@ -453,7 +453,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             InlineKeyboardButton('💁‍♀️ Fᴇᴀᴛᴜʀᴇs', callback_data='help'),
             InlineKeyboardButton('😊 Aʙᴏᴜᴛ', callback_data='about')
         ],[
-        InlineKeyboardButton('⁉️ SETTINGS ⁉️', callback_data='open_admin_from_start')
+        InlineKeyboardButton('⁉️ Sᴇᴛᴛɪɴɢs ⁉️', callback_data='open_admin_from_start')
         ]]
         if CLONE_MODE == True:
             buttons.append([InlineKeyboardButton('🤖 ᴄʀᴇᴀᴛᴇ ʏᴏᴜʀ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])      
