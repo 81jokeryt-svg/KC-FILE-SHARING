@@ -4,7 +4,7 @@ import logging
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
-from plugins.dbusers import * # Make sure this handles db correctly
+from plugins.dbusers import db  # Namespace issue se bachne ke liye explicit import
 from utils import *
 import pytz
 import time
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 ADMIN_STATE = {}
 
 # -------------------------------------------------------------
-# HELPER VALIDATION FUNCTIONS
+# HELPER VALIDATION & TIMER FUNCTIONS
 # -------------------------------------------------------------
 def is_valid_domain(domain):
     pattern = r"^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}$"
@@ -29,6 +29,17 @@ def is_valid_api(api):
     if " " in api_clean or len(api_clean) < 8:
         return False
     return bool(re.match(r"^[a-zA-Z0-9_\-]+$", api_clean))
+
+async def auto_delete_message(msg, delay=120):
+    """Message bhejta hai aur 120 seconds ke baad delete kar deta hai."""
+    await asyncio.sleep(delay)
+    try:
+        await msg.delete()
+    except Exception:
+        pass
+
+# Shared Inline Back Button layout for temporary success/cancel messages
+TEMP_BACK_BTN = InlineKeyboardMarkup([[InlineKeyboardButton("≤ BACK", callback_data="adm_temp_back")]])
 
 # -------------------------------------------------------------
 # 1. MAIN PANEL TEXT & KEYBOARD GENERATOR
@@ -109,7 +120,7 @@ async def get_start_page_menu_layout(settings):
     text = (
         "🎨 **START PAGE CONFIGURATION**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🖼️ **Start Photo Status:** `{has_photo}`\n"
+        f"🖼️ **Start Photo Status:** `{settings.get('start_photo', 'None')}`\n"
         f"📝 **Start Text Status:** `{has_text}`\n"
         f"⚠️ **Spoiler Status:** `{s_status}`\n\n"
         "Aap niche diye gaye button se live /start command ke message, photo aur spoiler toggle badal sakte hain."
@@ -118,9 +129,9 @@ async def get_start_page_menu_layout(settings):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("✍️ 𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗧𝗘𝗫𝗧", callback_data="adm_set_start_txt")], 
         [InlineKeyboardButton("🗑️ 𝗥𝗘𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗧𝗘𝗫𝗧", callback_data="adm_reset_start_txt")],
-        [InlineKeyboardButton("🖼️ 𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢", callback_data="adm_set_start_img")], 
-        [InlineKeyboardButton("🗑️ 𝗥𝗘𝗠𝗢𝗩𝗘 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢", callback_data="adm_remove_start_img")],
-        [InlineKeyboardButton(f"🎭 𝗦𝗣𝗢𝗜𝗟𝗘𝗥 𝗠𝗢𝗗𝗘: {'🟢 ON' if settings.get('start_spoiler', False) else '🔴 OFF'}", callback_data="adm_toggle_spoiler")],
+        [InlineKeyboardButton("🖼️ 𝗦𝗘𝗧 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢 (𝗨𝗥𝗟)", callback_data="adm_set_start_img")], 
+        [InlineKeyboardButton("🗑️ 𝗥𝗘𝗠𝗢重𝗩𝗘 𝗦𝗧𝗔𝗥𝗧 𝗣𝗛𝗢𝗧𝗢", callback_data="adm_remove_start_img")],
+        [InlineKeyboardButton(f"🎭 𝗦??𝗢𝗜𝗟𝗘𝗥 𝗠𝗢𝗗𝗘: {'🟢 ON' if settings.get('start_spoiler', False) else '🔴 OFF'}", callback_data="adm_toggle_spoiler")],
         [InlineKeyboardButton("𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="adm_back_main")]
     ])
     return text, keyboard
@@ -208,6 +219,16 @@ async def admin_callback(client, query):
         text, keyboard = await get_premium_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
+        
+    # --- NEW: BACK HANDLE FOR TEMPORARY MESSAGES ---
+    elif action == "temp_back":
+        try:
+            await query.message.delete()
+        except:
+            pass
+        text, keyboard = await get_main_panel_layout(settings)
+        await client.send_message(chat_id, text, reply_markup=keyboard)
+        return
 
     # --- TOGGLES ACTIONS (NO USER INPUT NEEDED) ---
     elif action == "toggle_verify":
@@ -288,7 +309,7 @@ async def admin_callback(client, query):
         await query.message.edit_text(text=list_text, reply_markup=back_keyboard)
 
     # =============================================================
-    # 📝 ACTIONS REQUIRING USER INPUT (Replaced pyromod with State Machine)
+    # 📝 ACTIONS REQUIRING USER INPUT
     # =============================================================
     elif action in ["add_prem", "rem_prem", "set_buy_link", "set_start_txt", "set_start_img", "set_time", "set_token_time", "change_link"]:
         await query.answer() 
@@ -310,7 +331,7 @@ async def admin_callback(client, query):
             prompt_text = "✍️ **Naya /start message text likh kar bhejein:**\n*(HTML/Markdown tags use kar sakte hain)*\n\n*(Cancel ke liye /cancel)*"
             step = "set_start_txt"
         elif action == "set_start_img":
-            prompt_text = "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*"
+            prompt_text = "🖼️ **Nayi Start Photo ka URL (Link) bhejein:**\n*(Example: `https://site.com/image.png`)*\n\n*(Cancel karne ke liye /cancel likhein)*"
             step = "set_start_img"
         elif action == "set_time":
             prompt_text = "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*"
@@ -327,9 +348,9 @@ async def admin_callback(client, query):
 
 
 # =============================================================
-# 📡 UNIVERSAL MESSAGE LISTENER (Auto Delete & Fast Processing)
+# 📡 UNIVERSAL MESSAGE LISTENER (With Layouts & 2 Min Auto Delete)
 # =============================================================
-@Client.on_message(filters.private & (filters.text | filters.photo), group=1)
+@Client.on_message(filters.private & filters.text, group=1)
 async def admin_state_listener(client: Client, message):
     chat_id = message.from_user.id
     
@@ -339,27 +360,25 @@ async def admin_state_listener(client: Client, message):
     state = ADMIN_STATE[chat_id]
     step = state["step"]
     
-    # 🧹 1. User ne jo message/photo bheji hai, usko delete karo
+    # 🧹 User aur Bot ke purane questions messages delete karo
     try:
         await message.delete()
     except:
         pass
 
-    # 🧹 2. Bot ne jo purana sawal pucha tha, usko delete karo
     if "bot_msg_id" in state:
         try:
             await client.delete_messages(chat_id, state["bot_msg_id"])
         except:
             pass
 
-    text = (message.text or message.caption or "").strip()
+    text = message.text.strip()
 
     # ❌ CANCEL PROCESS
     if text == "/cancel":
         del ADMIN_STATE[chat_id]
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_main_panel_layout(settings)
-        await message.reply("❌ **Process Cancelled.** Aap wapas menu me aa gaye hain.", reply_markup=keyboard)
+        cancel_msg = await message.reply("**CANCELLED THIS PROCESS...**", reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(cancel_msg, 120))
         return
 
     # ---------------------------------------------------------
@@ -393,16 +412,15 @@ async def admin_state_listener(client: Client, message):
         ist_expiry = expiry_date.replace(tzinfo=pytz.utc).astimezone(ist_timezone)
         formatted_expiry = ist_expiry.strftime('%Y-%m-%d %H:%M IST')
         
-        await message.reply(f"👑 **PREMIUM ACTIVATED SUCCESSFULLY**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 **ID:** `{target_id}`\n⏱️ **Duration:** `{premium_days} Days`\n📅 **Expiry:** `{formatted_expiry}`")
+        # Screenshot jaisa simple text handle
+        success_text = f"**Premium access added to the user with id -\n{target_id}.**"
+        success_msg = await message.reply(success_text, reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
         
         try:
             await client.send_message(target_id, f"🎉 **CONGRATULATIONS !!**\nAapke Account par **{premium_days} Dino** ke liye **👑 PREMIUM ACCESS** active kar diya gaya hai!\n📅 **Expiry Date:** `{formatted_expiry}`")
         except Exception as e:
             logger.error(f"Failed to notify user {target_id}: {e}")
-            
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_premium_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
 
     # ---------------------------------------------------------
     # 🔴 REMOVE PREMIUM
@@ -418,17 +436,15 @@ async def admin_state_listener(client: Client, message):
         is_removed = await db.remove_premium_user(target_id)
         
         if is_removed:
-            await message.reply(f"🗑️ **User ID** `{target_id}` **Premium List se hata di gayi!**")
+            success_msg = await message.reply(f"**Premium access removed for user id -\n{target_id}.**", reply_markup=TEMP_BACK_BTN)
             try:
                 await client.send_message(target_id, "⚠️ **PREMIUM PLAN EXPIRED / REMOVED**\nAapke account se Premium Access hata diya gaya hai.")
             except:
                 pass
         else:
-            await message.reply(f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
+            success_msg = await message.reply(f"❌ **User ID {target_id} Premium list mein nahi mila.**", reply_markup=TEMP_BACK_BTN)
             
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_premium_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
 
     # ---------------------------------------------------------
     # 🔗 SET BUY LINK
@@ -436,11 +452,8 @@ async def admin_state_listener(client: Client, message):
     elif step == "set_buy_link":
         del ADMIN_STATE[chat_id]
         await db.update_setting("premium_buy_link", text)
-        await message.reply(f"✅ **Premium Buy Link updated successfully!**\n\n`{text}`")
-        
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_premium_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
+        success_msg = await message.reply(f"✅ **Premium Buy Link updated successfully!**", reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
 
     # ---------------------------------------------------------
     # ✍️ SET START TEXT
@@ -448,29 +461,22 @@ async def admin_state_listener(client: Client, message):
     elif step == "set_start_txt":
         del ADMIN_STATE[chat_id]
         await db.update_setting("custom_start_text", text)
-        await message.reply("✅ **Start page message text update ho gaya!**")
-        
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_start_page_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
+        success_msg = await message.reply("✅ **Start page message text update ho gaya!**", reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
 
     # ---------------------------------------------------------
-    # 🖼️ SET START PHOTO
+    # 🖼️ SET START PHOTO (URL BASED CHANGE)
     # ---------------------------------------------------------
     elif step == "set_start_img":
-        if not message.photo:
-            err_msg = await message.reply("❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.")
+        if not text.startswith(("http://", "https://")):
+            err_msg = await message.reply("❌ **Invalid Format!** Kripya ek valid Image URL/Link bhejein.")
             ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
             return
             
-        file_id = message.photo.file_id
         del ADMIN_STATE[chat_id]
-        await db.update_setting("start_photo", file_id)
-        await message.reply("✅ **Start Page Image updated successfully!**")
-        
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_start_page_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
+        await db.update_setting("start_photo", text)
+        success_msg = await message.reply("✅ **Start Page Image URL updated successfully!**", reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
 
     # ---------------------------------------------------------
     # ⏱️ SET DELETE TIME
@@ -480,11 +486,8 @@ async def admin_state_listener(client: Client, message):
             minutes = int(text)
             del ADMIN_STATE[chat_id]
             await db.update_setting("auto_delete_time", minutes * 60)
-            await message.reply(f"✅ Auto-Delete timer set to **{minutes} Minutes**!")
-            
-            settings = await db.get_settings()
-            text_msg, keyboard = await get_delete_menu_layout(settings)
-            await message.reply(text_msg, reply_markup=keyboard)
+            success_msg = await message.reply(f"✅ **Auto-Delete timer set to {minutes} Minutes!**", reply_markup=TEMP_BACK_BTN)
+            asyncio.create_task(auto_delete_message(success_msg, 120))
         except ValueError:
             err_msg = await message.reply("❌ **Invalid Format!** Only clean numbers (minutes) are allowed.")
             ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
@@ -497,11 +500,8 @@ async def admin_state_listener(client: Client, message):
             hours = int(text)
             del ADMIN_STATE[chat_id]
             await db.update_setting("verify_expire_time", hours * 3600)
-            await message.reply(f"✅ Token validity set to **{hours} Hours**!")
-            
-            settings = await db.get_settings()
-            text_msg, keyboard = await get_verify_menu_layout(settings)
-            await message.reply(text_msg, reply_markup=keyboard)
+            success_msg = await message.reply(f"✅ **Token validity set to {hours} Hours!**", reply_markup=TEMP_BACK_BTN)
+            asyncio.create_task(auto_delete_message(success_msg, 120))
         except ValueError:
             err_msg = await message.reply("❌ **Invalid Format!** Only integers/numbers (hours) are allowed.")
             ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
@@ -523,7 +523,7 @@ async def admin_state_listener(client: Client, message):
 
     elif step == "set_shortener_api":
         if not is_valid_api(text):
-            err_msg = await message.reply("❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid sequences.")
+            err_msg = await message.reply("❌ **Invalid API Format!**\nAPI strings should contain no spaces.")
             ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
             return
             
@@ -534,8 +534,5 @@ async def admin_state_listener(client: Client, message):
         await db.update_setting("shortlink_url", domain)
         await db.update_setting("shortlink_api", api)
         
-        await message.reply("✅ **Shortener Details Updated Successfully!**")
-        
-        settings = await db.get_settings()
-        text_msg, keyboard = await get_verify_menu_layout(settings)
-        await message.reply(text_msg, reply_markup=keyboard)
+        success_msg = await message.reply("✅ **Shortener Details Updated Successfully!**", reply_markup=TEMP_BACK_BTN)
+        asyncio.create_task(auto_delete_message(success_msg, 120))
