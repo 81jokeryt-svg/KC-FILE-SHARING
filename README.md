@@ -2,7 +2,7 @@
   <img src="https://i.ibb.co/mFMzXrRX/photo-2026-05-25-10-39-48-7643777348508057624.jpg" alt="AC FILE SHARING BOT Logo">
 </p>
 <h1 align="center">
-  VJ FILE STORE BOT
+  AC FILE SHARING BOT 
 </h1>
 
 ![Typing SVG](https://readme-typing-svg.herokuapp.com/?lines=Welcome+To+VJ-FILE-STORE-BOT;A+Highly+Advance+File+Store+Bot;Made+By+Yt-@Tech_VJ!;With+Clone+Feature+Stream/Download+Link;Custom+Url+Shortner+Auto+Delete+Feature;A+Bot+With+Fully+Advanced+Feature!;Thank+You!)
@@ -85,31 +85,20 @@
 
 <b><details><summary>Tap On Me For See Credit</summary>
 
-💝 Credit Goes To [Tech VJ](https://telegram.me/VJ_Bots)
+💝 Credit Goes To [AC BOTz](https://telegram.me/HDFILM0900_BOT)
 
 🖍️ This Code Is Fully Written Or Coded And Public By [Tech VJ](https://github.com/VJBots) So Don't Forgot To Give Credit
 
 💖 And Thank You So Much To All Who Help In This Journey 💕
 
-Copyright ©️ [Tech VJ](https://youtube.com/@Tech_VJ)
 
-</b>
-</details>
-
-## About Owner 
-
-<b><details><summary>Tap On Me For See Details Of Owner</summary>
-
-- YouTube Channel : [Tech VJ](https://youtube.com/@Tech_VJ)
-- Telegram Channel : [VJ Bots](https://telegram.me/VJ_Bots)
-- Contact Link : [King VJ](https://telegram.me/Kingvj01)
-- Instagram Id Link : [Tech VJ](https://instagram.com/tech.vj)
 
 </b>
 </details>
 
 
-### Copyright ©️ [Tech VJ](https://youtube.com/@Tech_VJ)
+
+### Copyright ©️ [Tech VJ](https://hdfilm0900_bot)
 
 <b>Selling This Repo Or Code Of This Repo For Money Is Strictly Prohibited 🚫</b>
 
