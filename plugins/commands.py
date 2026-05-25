@@ -52,6 +52,11 @@ def formate_file_name(file_name):
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
+    try:
+        await message.react(emoji=random.choice(REACTIONS), big=True)
+    except Exception:
+        await message.react(emoji="⚡️", big=True)
+        pass
     username = client.me.username
     user_id = message.from_user.id
     
