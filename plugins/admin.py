@@ -177,7 +177,7 @@ async def admin_panel(client, message):
 @Client.on_callback_query(filters.regex("open_admin_from_start"))
 async def open_admin_from_start(client, query):
     if query.from_user.id not in ADMINS:
-        await query.answer("❌ Yeh panel sirf bot owner ke liye hai!", show_alert=True)
+        await query.answer("🚫 Oɴʟʏ Fᴏʀ Bᴏᴛ Oᴡɴᴇʀ!", show_alert=True)
         return
     settings = await db.get_settings()
     text, keyboard = await get_main_panel_layout(settings)
