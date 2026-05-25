@@ -319,29 +319,30 @@ async def admin_callback(client, query):
         step = ""
         
         if action == "add_prem":
-            prompt_text = "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number allow hai. Cancel karne ke liye /cancel likhein)*"
+            prompt_text = "👑 **[Sᴛᴇᴘ 1/2] Sᴇɴᴅ Tʜᴇ Nᴇᴡ Pʀᴇᴍɪᴜᴍ Usᴇʀ's UID (Tᴇʟᴇɢʀᴀᴍ ID):**\n\n*(Oɴʟʏ Nᴜᴍʙᴇʀs Aʟʟᴏᴡᴇᴅ. Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ)*"
             step = "add_prem_id"
         elif action == "rem_prem":
-            prompt_text = "🗑️ **Premium se hatane ke liye User ki UID bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*"
+            prompt_text = "🗑️ **Sᴇɴᴅ Tʜᴇ Usᴇʀ's UID Tᴏ Rᴇᴍᴏᴠᴇ Fʀᴏᴍ Pʀᴇᴍɪᴜᴍ:**\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ)*"
             step = "rem_prem_id"
         elif action == "set_buy_link":
-            prompt_text = "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n*(Ex: `https://t.me/your_username`)*\n\n*(Cancel ke liye /cancel)*"
+            prompt_text = "🔗 **Sᴇɴᴅ Tʜᴇ Pʀᴇᴍɪᴜᴍ Pᴜʀᴄʜᴀsᴇ Lɪɴᴋ Fᴏʀ Usᴇʀs:**\n*(Ex: `https://t.me/your_username`)*\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ)*"
             step = "set_buy_link"
         elif action == "set_start_txt":
-            prompt_text = "✍️ **Naya /start message text likh kar bhejein:**\n*(HTML/Markdown tags use kar sakte hain)*\n\n*(Cancel ke liye /cancel)*"
+            prompt_text = "✍️ **Sᴇɴᴅ Tʜᴇ Nᴇᴡ /start Mᴇssᴀɢᴇ Tᴇxᴛ:**\n*(Yᴏᴜ Cᴀɴ Usᴇ HTML/Mᴀʀᴋᴅᴏᴡɴ Tᴀɢs)*\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ)*"
             step = "set_start_txt"
         elif action == "set_start_img":
-            prompt_text = "🖼️ **Nayi Start Photo ka URL (Link) bhejein:**\n*(Example: `https://site.com/image.png`)*\n\n*(Cancel karne ke liye /cancel likhein)*"
+            prompt_text = "🖼️ **Sᴇɴᴅ Tʜᴇ URL (Lɪɴᴋ) Oғ Tʜᴇ Nᴇᴡ Sᴛᴀʀᴛ Pʜᴏᴛᴏ:**\n*(Exᴀᴍᴘʟᴇ: `https://site.com/image.png`)*\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ)*"
             step = "set_start_img"
         elif action == "set_time":
-            prompt_text = "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            prompt_text = "⏱️ **Sᴇɴᴅ Tʜᴇ Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ Tɪᴍᴇ Iɴ Mɪɴᴜᴛᴇs:**\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ Tʜᴇ Pʀᴏᴄᴇss)*"
             step = "set_delete_time"
         elif action == "set_token_time":
-            prompt_text = "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            prompt_text = "🔑 **Sᴇɴᴅ Tʜᴇ Tᴏᴋᴇɴ Vᴀʟɪᴅɪᴛʏ Tɪᴍᴇ Iɴ Hᴏᴜʀs:**\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ Tʜᴇ Pʀᴏᴄᴇss)*"
             step = "set_token_time"
         elif action == "change_link":
-            prompt_text = "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `site.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            prompt_text = "🔗 **Sᴇɴᴅ Tʜᴇ Nᴇᴡ Sʜᴏʀᴛᴇɴᴇʀ Dᴏᴍᴀɪɴ Nᴀᴍᴇ:**\n*(Exᴀᴍᴘʟᴇ: `site.com`)*\n\n*(Tʏᴘᴇ /cancel Tᴏ Cᴀɴᴄᴇʟ Tʜᴇ Pʀᴏᴄᴇss)*"
             step = "set_shortener_domain"
+
 
         ask_msg = await client.send_message(chat_id, prompt_text)
         ADMIN_STATE[chat_id] = {"step": step, "bot_msg_id": ask_msg.id}
