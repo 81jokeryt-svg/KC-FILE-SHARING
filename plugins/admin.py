@@ -6,6 +6,9 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
 from plugins.dbusers import *
 from utils import *
+import pytz
+from datetime import datetime
+
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +307,9 @@ async def admin_callback(client, query):
             
         premium_days = int(days_input)
         expiry_date = await db.add_premium_user(target_id, premium_days)
-        formatted_expiry = expiry_date.strftime('%Y-%m-%d %H:%M UTC')
+        ist_timezone = pytz.timezone('Asia/Kolkata')
+        ist_expiry = expiry_date.replace(tzinfo=pytz.utc).astimezone(ist_timezone)
+        formatted_expiry = ist_expiry.strftime('%Y-%m-%d %H:%M IST')
         
         success_msg = await client.send_message(
             chat_id, 
