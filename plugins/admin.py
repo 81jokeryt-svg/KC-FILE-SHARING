@@ -48,9 +48,9 @@ async def get_main_panel_layout(settings):
     p_status = "🟢 ON" if settings.get("protect_content", False) else "🔴 OFF"
     
     text = (
-        "⚡ **BOT ADMIN CONTROL PANEL** ⚡\n"
+        "⚡ ʜᴇʀᴇ ɪs ᴛʜᴇ sᴇᴛᴛɪɴɢs ᴍᴇɴᴜ ⚡\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Welcome back, Admin! Use the buttons below to configure and manage your bot settings instantly.\n"
+        "ᴄᴜsᴛᴏᴍɪᴢᴇ ʏᴏᴜʀ sᴇᴛᴛɪɴɢs ᴀs ᴘᴇʀ ʏᴏᴜʀ ɴᴇᴇᴅ.\n"
     )
     
     keyboard = InlineKeyboardMarkup([
@@ -72,7 +72,7 @@ async def get_verify_menu_layout(settings):
     v_expire_hours = settings.get("verify_expire_time", 86400) // 3600
     
     text = (
-        "🔐 **VERIFICATION & FEATURE SWITCH**\n"
+        "🔐 ᴍᴀɴᴀɢᴇ ʏᴏᴜʀ ᴛᴏᴋᴇɴ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴇᴛᴛɪɴɢs\nғʀᴏᴍ ʜᴇʀᴇ ɢɪᴠᴇɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "⚠️ *Note: Ek waqt par sirf Verification chalega ya toh Premium Mode.*\n\n"
         f"🔗 **Shortener Site:** `{settings.get('shortlink_url')}`\n"
