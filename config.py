@@ -27,11 +27,11 @@ CLONE_MODE = bool(environ.get('CLONE_MODE', False)) # Set True or False
 
 # If Clone Mode Is True Then Fill All Required Variable, If False Then Don't Fill.
 CLONE_DB_URI = environ.get("CLONE_DB_URI", "")
-CDB_NAME = environ.get("CDB_NAME", "clonetechvj")
+CDB_NAME = environ.get("CDB_NAME", "cloneacbotz")
 
 # Database Information
 DB_URI = environ.get("DB_URI", "")
-DB_NAME = environ.get("DB_NAME", "techvjbotz")
+DB_NAME = environ.get("DB_NAME", "acbotz")
 
 # Auto Delete Information
 AUTO_DELETE_MODE = bool(environ.get('AUTO_DELETE_MODE', False)) # Set True or False
