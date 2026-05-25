@@ -4,13 +4,17 @@ import logging
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMINS
-from plugins.dbusers import *
+from plugins.dbusers import * # Make sure this handles db correctly
 from utils import *
 import pytz
 from datetime import datetime
 
-
 logger = logging.getLogger(__name__)
+
+# =============================================================
+# 🧠 BOT KI NAYI MEMORY (Universal State Tracker)
+# =============================================================
+ADMIN_STATE = {}
 
 # -------------------------------------------------------------
 # HELPER VALIDATION FUNCTIONS
@@ -24,7 +28,6 @@ def is_valid_api(api):
     if " " in api_clean or len(api_clean) < 8:
         return False
     return bool(re.match(r"^[a-zA-Z0-9_\-]+$", api_clean))
-
 
 # -------------------------------------------------------------
 # 1. MAIN PANEL TEXT & KEYBOARD GENERATOR
@@ -158,7 +161,6 @@ async def admin_panel(client, message):
     text, keyboard = await get_main_panel_layout(settings)
     await message.reply_text(text, reply_markup=keyboard)
 
-
 # 🌟 Start Command Callback
 @Client.on_callback_query(filters.regex("open_admin_from_start"))
 async def open_admin_from_start(client, query):
@@ -189,38 +191,32 @@ async def admin_callback(client, query):
             keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
         return
-        
     elif action == "sub_verify":
         text, keyboard = await get_verify_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
-        
     elif action == "sub_delete":
         text, keyboard = await get_delete_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
-        
     elif action == "sub_start_page":
         text, keyboard = await get_start_page_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
-
     elif action == "sub_premium":
         text, keyboard = await get_premium_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
         return
 
-    # --- TOGGLES ACTIONS ---
+    # --- TOGGLES ACTIONS (NO USER INPUT NEEDED) ---
     elif action == "toggle_verify":
         new_val = not settings.get("verify_mode", True)
         await db.update_setting("verify_mode", new_val)
-        
         if new_val == True:
             await db.update_setting("premium_mode", False)
             await query.answer("Verification Mode ON & Premium Mode OFF! 🔄", show_alert=True)
         else:
             await query.answer("Verification Mode Updated! ✅")
-            
         settings = await db.get_settings()
         text, keyboard = await get_verify_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
@@ -228,13 +224,11 @@ async def admin_callback(client, query):
     elif action == "toggle_premium_mode":
         new_val = not settings.get("premium_mode", False)
         await db.update_setting("premium_mode", new_val)
-        
         if new_val == True:
             await db.update_setting("verify_mode", False)
             await query.answer("Premium Mode ON & Verification OFF! 👑", show_alert=True)
         else:
             await query.answer("Premium Mode Updated! ✅")
-            
         settings = await db.get_settings()
         text, keyboard = await get_verify_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
@@ -253,11 +247,8 @@ async def admin_callback(client, query):
         await query.answer("Content Protection Updated! ✅")
         settings = await db.get_settings()
         text, keyboard = await get_main_panel_layout(settings)
-        if "🔙 Back to Home" in str(query.message.reply_markup):
-            keyboard.inline_keyboard[-1] = [InlineKeyboardButton("🔙 Back to Home", callback_data="start")]
         await query.message.edit_text(text, reply_markup=keyboard)
 
-    # 🌟 NEW TOGGLE ACTION: START PHOTO SPOILER BUTTON
     elif action == "toggle_spoiler":
         new_val = not settings.get("start_spoiler", False)
         await db.update_setting("start_spoiler", new_val)
@@ -265,350 +256,285 @@ async def admin_callback(client, query):
         settings = await db.get_settings()
         text, keyboard = await get_start_page_menu_layout(settings)
         await query.message.edit_text(text, reply_markup=keyboard)
-        return
 
-    # =============================================================
-    # --- PREMIUM CONTROL ACTIONS ---
-    # =============================================================
-    elif action == "add_prem":
-        await query.answer() 
-        await query.message.delete()
-        id_prompt = await client.ask(chat_id, "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number baji allow hai. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        
-        if id_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_premium_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
-        u_input = id_prompt.text.strip()
-        if not u_input.isdigit():
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
-            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
-            return
-
-        target_id = int(u_input)
-        days_prompt = await client.ask(chat_id, f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n\n*(Example: 30 din ke liye '30' likhein. Cancel ke liye /cancel)*", filters=filters.text)
-        
-        if days_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
-            await days_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_premium_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
-        days_input = days_prompt.text.strip()
-        if not days_input.isdigit() or int(days_input) <= 0:
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
-            await client.send_message(chat_id, "❌ **Invalid Days!** Kripya sirf positive number bhejiyega (jaise: 1, 7, 30).", reply_markup=back_keyboard)
-            return
-            
-        premium_days = int(days_input)
-        expiry_date = await db.add_premium_user(target_id, premium_days)
-        ist_timezone = pytz.timezone('Asia/Kolkata')
-        ist_expiry = expiry_date.replace(tzinfo=pytz.utc).astimezone(ist_timezone)
-        formatted_expiry = ist_expiry.strftime('%Y-%m-%d %H:%M IST')
-        
-        success_msg = await client.send_message(
-            chat_id, 
-            f"👑 **👑 PREMIUM ACTIVATED SUCCESSFULLY**\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 **User ID:** `{target_id}`\n"
-            f"⏱️ **Duration:** `{premium_days} Days`\n"
-            f"📅 **Expiry Time:** `{formatted_expiry}`\n\n"
-            f"*Yeh user expiry date aate hi automatic list se remove ho jayega.*"
-        )
-        
-        try:
-            await client.send_message(
-                chat_id=target_id,
-                text=(
-                    f"🎉 **🎉 CONGRATULATIONS !! 🎉**\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"Aapke Account par **{premium_days} Dino** ke liye **👑 PREMIUM ACCESS** active kar diya gaya hai!\n\n"
-                    f"📅 **Expiry Date:** `{formatted_expiry}`\n\n"
-                    f"✨ **Benefits:** Ab aapko bot me koi bhi file download karte waqt **Shortener Ads ya Verification karne ki zarurat nahi padegi**! Aapki saari files seedhe bypass ho jayengi. Enjoy!"
-                )
-            )
-        except Exception as e:
-            logger.error(f"Could not send premium activation alert to {target_id}: {e}")
-            
-        await asyncio.sleep(4)
-        await success_msg.delete()
-        await id_prompt.delete()
-        await days_prompt.delete()
-        
+    # --- RESET / LIST ACTIONS (NO USER INPUT NEEDED) ---
+    elif action == "reset_start_txt":
+        await db.update_setting("custom_start_text", None) 
+        await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
         settings = await db.get_settings()
-        text, keyboard = await get_premium_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
-        return
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
 
-    elif action == "rem_prem":
-        await query.answer() 
-        await query.message.delete()
-        id_prompt = await client.ask(chat_id, "🗑️ **Premium se hatane ke liye User ki UID (Telegram ID) bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        
-        if id_prompt.text.strip() == "/cancel":
-            await id_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_premium_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
-        u_input = id_prompt.text.strip()
-        if not u_input.isdigit():
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_premium")]])
-            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.", reply_markup=back_keyboard)
-            return
-
-        target_id = int(u_input)
-        is_removed = await db.remove_premium_user(target_id)
-        
-        if is_removed:
-            success_msg = await client.send_message(chat_id, f"🗑️ **User ID** `{target_id}` **Premium List se successfully hata di gayi!**")
-            try:
-                await client.send_message(
-                    chat_id=target_id,
-                    text=(
-                        f"⚠️ **PREMIUM PLAN EXPIRED / REMOVED**\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"Aapke account se **👑 Premium Access** ko admin dwara remove kar diya gaya hai ya aapka plan expire ho gaya hai.\n\n"
-                        f"🔄 Files pane ke liye ab aapko normal users ki tarah verification process complete karna hoga."
-                    )
-                )
-            except Exception as e:
-                logger.error(f"Could not send premium removal alert to {target_id}: {e}")
-        else:
-            success_msg = await client.send_message(chat_id, f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
-            
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await id_prompt.delete()
-        
+    elif action == "remove_start_img":
+        await db.update_setting("start_photo", None) 
+        await query.answer("Start image successfully remove ho gayi! 🗑️", show_alert=True)
         settings = await db.get_settings()
-        text, keyboard = await get_premium_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
-        return
+        text, keyboard = await get_start_page_menu_layout(settings)
+        await query.message.edit_text(text, reply_markup=keyboard)
 
     elif action == "list_prem":
         try:
             users = await db.get_all_premium_users()
         except Exception:
             users = []
-            
         if not users:
             list_text = "<b>ℹ️ Premium user list bilkul khali hai!</b>"
         else:
             list_text = "📜 **CURRENT PREMIUM USERS LIST**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             for idx, u_id in enumerate(users, start=1):
                 list_text += f"{idx}. 👤 ID: <code>{u_id}</code>\n"
-        
         back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_sub_premium")]])
         await query.message.edit_text(text=list_text, reply_markup=back_keyboard)
-        return
-
-    elif action == "set_buy_link":
-        await query.answer()
-        await query.message.delete()
-        link_prompt = await client.ask(chat_id, "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n\n*(Ex: `https://t.me/your_username` ya payment website link. Cancel ke liye /cancel)*", filters=filters.text)
-        
-        if link_prompt.text.strip() == "/cancel":
-            await link_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_premium_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-            
-        new_link = link_prompt.text.strip()
-        await db.update_setting("premium_buy_link", new_link)
-        
-        success_msg = await client.send_message(chat_id, f"✅ **Premium Buy Link updated successfully!**\n\n`{new_link}`")
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await link_prompt.delete()
-        
-        settings = await db.get_settings()
-        text, keyboard = await get_premium_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
-        return
 
     # =============================================================
-    # --- START PAGE CONTROL ACTIONS ---
+    # 📝 ACTIONS REQUIRING USER INPUT (Replaced pyromod with State Machine)
     # =============================================================
-    elif action == "set_start_txt":
+    elif action in ["add_prem", "rem_prem", "set_buy_link", "set_start_txt", "set_start_img", "set_time", "set_token_time", "change_link"]:
         await query.answer() 
         await query.message.delete()
-        txt_prompt = await client.ask(chat_id, "✍️ **Naya /start message text likh kar bhejein:**\n\n*(HTML/Markdown tags use kar sakte hain. Cancel karne ke liye /cancel likhein)*", filters=filters.text)
         
-        if txt_prompt.text.strip() == "/cancel":
-            await txt_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_start_page_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
+        prompt_text = ""
+        step = ""
+        
+        if action == "add_prem":
+            prompt_text = "👑 **[STEP 1/2] Naye Premium User ki UID (Telegram ID) bhejein:**\n\n*(Sirf number allow hai. Cancel karne ke liye /cancel likhein)*"
+            step = "add_prem_id"
+        elif action == "rem_prem":
+            prompt_text = "🗑️ **Premium se hatane ke liye User ki UID bhejein:**\n\n*(Cancel karne ke liye /cancel likhein)*"
+            step = "rem_prem_id"
+        elif action == "set_buy_link":
+            prompt_text = "🔗 **Users ke liye Premium kharidne ka Link bhejein:**\n*(Ex: `https://t.me/your_username`)*\n\n*(Cancel ke liye /cancel)*"
+            step = "set_buy_link"
+        elif action == "set_start_txt":
+            prompt_text = "✍️ **Naya /start message text likh kar bhejein:**\n*(HTML/Markdown tags use kar sakte hain)*\n\n*(Cancel ke liye /cancel)*"
+            step = "set_start_txt"
+        elif action == "set_start_img":
+            prompt_text = "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*"
+            step = "set_start_img"
+        elif action == "set_time":
+            prompt_text = "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            step = "set_delete_time"
+        elif action == "set_token_time":
+            prompt_text = "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            step = "set_token_time"
+        elif action == "change_link":
+            prompt_text = "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `site.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*"
+            step = "set_shortener_domain"
 
-        await db.update_setting("custom_start_text", txt_prompt.text.strip())
-        success_msg = await client.send_message(chat_id, "✅ **Start page message text update ho gaya!**")
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await txt_prompt.delete()
+        ask_msg = await client.send_message(chat_id, prompt_text)
+        ADMIN_STATE[chat_id] = {"step": step, "bot_msg_id": ask_msg.id}
+
+
+# =============================================================
+# 📡 UNIVERSAL MESSAGE LISTENER (Auto Delete & Fast Processing)
+# =============================================================
+@Client.on_message(filters.private & (filters.text | filters.photo), group=1)
+async def admin_state_listener(client: Client, message):
+    chat_id = message.from_user.id
+    
+    if chat_id not in ADMIN_STATE:
+        return
         
+    state = ADMIN_STATE[chat_id]
+    step = state["step"]
+    
+    # 🧹 1. User ne jo message/photo bheji hai, usko delete karo
+    try:
+        await message.delete()
+    except:
+        pass
+
+    # 🧹 2. Bot ne jo purana sawal pucha tha, usko delete karo
+    if "bot_msg_id" in state:
+        try:
+            await client.delete_messages(chat_id, state["bot_msg_id"])
+        except:
+            pass
+
+    text = (message.text or message.caption or "").strip()
+
+    # ❌ CANCEL PROCESS
+    if text == "/cancel":
+        del ADMIN_STATE[chat_id]
         settings = await db.get_settings()
-        text, keyboard = await get_start_page_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
+        text_msg, keyboard = await get_main_panel_layout(settings)
+        await message.reply("❌ **Process Cancelled.** Aap wapas menu me aa gaye hain.", reply_markup=keyboard)
         return
 
-    elif action == "reset_start_txt":
-        await query.answer() 
-        await db.update_setting("custom_start_text", None) 
-        await query.answer("Start message default text par reset ho gaya! ⚪", show_alert=True)
-        settings = await db.get_settings()
-        text, keyboard = await get_start_page_menu_layout(settings)
-        await query.message.edit_text(text, reply_markup=keyboard)
-        return
-
-    elif action == "set_start_img":
-        await query.answer() 
-        await query.message.delete()
-        img_prompt = await client.ask(chat_id, "🖼️ **Nayi Start Photo ya image file bhejein (As a Photo):**\n\n*(Cancel karne ke liye /cancel text likh kar send karein)*")
-        
-        if img_prompt.text and img_prompt.text.strip() == "/cancel":
-            await img_prompt.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_start_page_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
-        if not img_prompt.photo:
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_start_page")]])
-            await client.send_message(chat_id, "❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.", reply_markup=back_keyboard)
+    # ---------------------------------------------------------
+    # 🟢 ADD PREMIUM STEPS
+    # ---------------------------------------------------------
+    if step == "add_prem_id":
+        if not text.isdigit():
+            err_msg = await message.reply("❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein (Cancel: /cancel).")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
             return
             
-        file_id = img_prompt.photo.file_id
+        target_id = int(text)
+        ADMIN_STATE[chat_id]["target_id"] = target_id
+        ADMIN_STATE[chat_id]["step"] = "add_prem_days"
+        
+        ask_msg = await message.reply(f"⏱️ **[STEP 2/2] User `{target_id}` ko kitne DINO (Days) ke liye Premium banana hai?**\n*(Example: 30)*")
+        ADMIN_STATE[chat_id]["bot_msg_id"] = ask_msg.id
+
+    elif step == "add_prem_days":
+        if not text.isdigit() or int(text) <= 0:
+            err_msg = await message.reply("❌ **Invalid Days!** Kripya sirf positive number bhejiyega.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
+            return
+            
+        premium_days = int(text)
+        target_id = ADMIN_STATE[chat_id]["target_id"]
+        del ADMIN_STATE[chat_id] 
+        
+        expiry_date = await db.add_premium_user(target_id, premium_days)
+        ist_timezone = pytz.timezone('Asia/Kolkata')
+        ist_expiry = expiry_date.replace(tzinfo=pytz.utc).astimezone(ist_timezone)
+        formatted_expiry = ist_expiry.strftime('%Y-%m-%d %H:%M IST')
+        
+        await message.reply(f"👑 **PREMIUM ACTIVATED SUCCESSFULLY**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 **ID:** `{target_id}`\n⏱️ **Duration:** `{premium_days} Days`\n📅 **Expiry:** `{formatted_expiry}`")
+        
+        try:
+            await client.send_message(target_id, f"🎉 **CONGRATULATIONS !!**\nAapke Account par **{premium_days} Dino** ke liye **👑 PREMIUM ACCESS** active kar diya gaya hai!\n📅 **Expiry Date:** `{formatted_expiry}`")
+        except Exception as e:
+            logger.error(f"Failed to notify user {target_id}: {e}")
+            
+        settings = await db.get_settings()
+        text_msg, keyboard = await get_premium_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
+
+    # ---------------------------------------------------------
+    # 🔴 REMOVE PREMIUM
+    # ---------------------------------------------------------
+    elif step == "rem_prem_id":
+        if not text.isdigit():
+            err_msg = await message.reply("❌ **Invalid Format!** Kripya sirf numerical Telegram ID send karein.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
+            return
+            
+        target_id = int(text)
+        del ADMIN_STATE[chat_id]
+        is_removed = await db.remove_premium_user(target_id)
+        
+        if is_removed:
+            await message.reply(f"🗑️ **User ID** `{target_id}` **Premium List se hata di gayi!**")
+            try:
+                await client.send_message(target_id, "⚠️ **PREMIUM PLAN EXPIRED / REMOVED**\nAapke account se Premium Access hata diya gaya hai.")
+            except:
+                pass
+        else:
+            await message.reply(f"❌ **User ID** `{target_id}` **Premium list mein nahi mila.**")
+            
+        settings = await db.get_settings()
+        text_msg, keyboard = await get_premium_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
+
+    # ---------------------------------------------------------
+    # 🔗 SET BUY LINK
+    # ---------------------------------------------------------
+    elif step == "set_buy_link":
+        del ADMIN_STATE[chat_id]
+        await db.update_setting("premium_buy_link", text)
+        await message.reply(f"✅ **Premium Buy Link updated successfully!**\n\n`{text}`")
+        
+        settings = await db.get_settings()
+        text_msg, keyboard = await get_premium_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
+
+    # ---------------------------------------------------------
+    # ✍️ SET START TEXT
+    # ---------------------------------------------------------
+    elif step == "set_start_txt":
+        del ADMIN_STATE[chat_id]
+        await db.update_setting("custom_start_text", text)
+        await message.reply("✅ **Start page message text update ho gaya!**")
+        
+        settings = await db.get_settings()
+        text_msg, keyboard = await get_start_page_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
+
+    # ---------------------------------------------------------
+    # 🖼️ SET START PHOTO
+    # ---------------------------------------------------------
+    elif step == "set_start_img":
+        if not message.photo:
+            err_msg = await message.reply("❌ **Invalid Format!** Kripya sirf ek image/photo forward ya upload karein.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
+            return
+            
+        file_id = message.photo.file_id
+        del ADMIN_STATE[chat_id]
         await db.update_setting("start_photo", file_id)
-        
-        success_msg = await client.send_message(chat_id, "✅ **Start Page Image updated successfully!**")
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await img_prompt.delete()
+        await message.reply("✅ **Start Page Image updated successfully!**")
         
         settings = await db.get_settings()
-        text, keyboard = await get_start_page_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
-        return
+        text_msg, keyboard = await get_start_page_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
 
-    elif action == "remove_start_img":
-        await query.answer() 
-        await db.update_setting("start_photo", None) 
-        await query.answer("Start image successfully remove ho gayi! (Text-Only Mode Enabled) 🗑️", show_alert=True)
-        settings = await db.get_settings()
-        text, keyboard = await get_start_page_menu_layout(settings)
-        await query.message.edit_text(text, reply_markup=keyboard)
-        return
-
-    # --- EXISTING VALIDATION CONTROLS ---
-    elif action == "set_time":
-        await query.answer() 
-        await query.message.delete()
-        time_msg = await client.ask(chat_id, "⏱️ **Auto-Delete ka time minutes me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        
-        if time_msg.text.strip() == "/cancel":
-            await time_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_delete_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
+    # ---------------------------------------------------------
+    # ⏱️ SET DELETE TIME
+    # ---------------------------------------------------------
+    elif step == "set_delete_time":
         try:
-            minutes = int(time_msg.text.strip())
+            minutes = int(text)
+            del ADMIN_STATE[chat_id]
             await db.update_setting("auto_delete_time", minutes * 60)
-            success_msg = await client.send_message(chat_id, f"✅ Auto-Delete timer set to **{minutes} Minutes**!")
-            await asyncio.sleep(3)
-            await success_msg.delete()
-            await time_msg.delete()
+            await message.reply(f"✅ Auto-Delete timer set to **{minutes} Minutes**!")
             
             settings = await db.get_settings()
-            text, keyboard = await get_delete_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
+            text_msg, keyboard = await get_delete_menu_layout(settings)
+            await message.reply(text_msg, reply_markup=keyboard)
         except ValueError:
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_delete")]])
-            await client.send_message(chat_id, "❌ **Invalid Format!** Only clean numbers are allowed.", reply_markup=back_keyboard)
-        return
+            err_msg = await message.reply("❌ **Invalid Format!** Only clean numbers (minutes) are allowed.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
 
-    elif action == "set_token_time":
-        await query.answer() 
-        await query.message.delete()
-        time_msg = await client.ask(chat_id, "🔑 **Token Validity ka time Hours (Ghante) me bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        
-        if time_msg.text.strip() == "/cancel":
-            await time_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
+    # ---------------------------------------------------------
+    # 🔑 SET TOKEN TIME
+    # ---------------------------------------------------------
+    elif step == "set_token_time":
         try:
-            hours = int(time_msg.text.strip())
+            hours = int(text)
+            del ADMIN_STATE[chat_id]
             await db.update_setting("verify_expire_time", hours * 3600)
-            success_msg = await client.send_message(chat_id, f"✅ Token validity set to **{hours} Hours**!")
-            await asyncio.sleep(3)
-            await success_msg.delete()
-            await time_msg.delete()
+            await message.reply(f"✅ Token validity set to **{hours} Hours**!")
             
             settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
+            text_msg, keyboard = await get_verify_menu_layout(settings)
+            await message.reply(text_msg, reply_markup=keyboard)
         except ValueError:
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
-            await client.send_message(chat_id, "❌ **Invalid Format!** Only integers/numbers are allowed.", reply_markup=back_keyboard)
-        return
+            err_msg = await message.reply("❌ **Invalid Format!** Only integers/numbers (hours) are allowed.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
 
-    elif action == "change_link":
-        await query.message.delete()
-        
-        site_msg = await client.ask(chat_id, "🔗 **Naya Shortener Domain name bhejein:**\n*(Example: `linkshortify.com`)*\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        new_site = site_msg.text.strip()
-        
-        if new_site == "/cancel":
-            await site_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
+    # ---------------------------------------------------------
+    # 🔗 SET SHORTENER (DOMAIN -> API)
+    # ---------------------------------------------------------
+    elif step == "set_shortener_domain":
+        if not is_valid_domain(text):
+            err_msg = await message.reply("❌ **Invalid Domain Format!** Use explicit domain formats like `site.com`.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
             return
+            
+        ADMIN_STATE[chat_id]["domain"] = text
+        ADMIN_STATE[chat_id]["step"] = "set_shortener_api"
+        
+        ask_msg = await message.reply("🔑 **Us Website ki API Key bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*")
+        ADMIN_STATE[chat_id]["bot_msg_id"] = ask_msg.id
 
-        if not is_valid_domain(new_site):
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
-            await client.send_message(chat_id, "❌ **Invalid Domain Format!**\nUse explicit domain formats like `site.com` or `api.cc` without protocols.", reply_markup=back_keyboard)
+    elif step == "set_shortener_api":
+        if not is_valid_api(text):
+            err_msg = await message.reply("❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid sequences.")
+            ADMIN_STATE[chat_id]["bot_msg_id"] = err_msg.id
             return
-
-        api_msg = await client.ask(chat_id, "🔑 **Us Website ki API Key bhejein:**\n\n*(Process cancel karne ke liye /cancel likhein)*", filters=filters.text)
-        new_api = api_msg.text.strip()
+            
+        domain = ADMIN_STATE[chat_id]["domain"]
+        api = text
+        del ADMIN_STATE[chat_id]
         
-        if new_api == "/cancel":
-            await site_msg.delete()
-            await api_msg.delete()
-            settings = await db.get_settings()
-            text, keyboard = await get_verify_menu_layout(settings)
-            await client.send_message(chat_id, text, reply_markup=keyboard)
-            return
-
-        if not is_valid_api(new_api):
-            back_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="adm_sub_verify")]])
-            await client.send_message(chat_id, "❌ **Invalid API Format!**\nAPI strings should contain no spaces and contain valid alphanumeric sequences.", reply_markup=back_keyboard)
-            return
+        await db.update_setting("shortlink_url", domain)
+        await db.update_setting("shortlink_api", api)
         
-        await db.update_setting("shortlink_url", new_site)
-        await db.update_setting("shortlink_api", new_api)
-        
-        success_msg = await client.send_message(chat_id, "✅ **Shortener Details Updated Successfully!**")
-        await asyncio.sleep(3)
-        await success_msg.delete()
-        await site_msg.delete()
-        await api_msg.delete()
+        await message.reply("✅ **Shortener Details Updated Successfully!**")
         
         settings = await db.get_settings()
-        text, keyboard = await get_verify_menu_layout(settings)
-        await client.send_message(chat_id, text, reply_markup=keyboard)
-        return
+        text_msg, keyboard = await get_verify_menu_layout(settings)
+        await message.reply(text_msg, reply_markup=keyboard)
