@@ -59,6 +59,9 @@ SHORTLINK_API = environ.get("SHORTLINK_API", "9d9199caec2c2e30e0670f1549ffa1a316
 VERIFY_TUTORIAL = environ.get("VERIFY_TUTORIAL", "https://t.me/howanubhav/14") # how to open link 
 VERIFY_EXPIRE_TIME = int(environ.get("VERIFY_EXPIRE_TIME", "300"))
 
+#Reaction /start
+REACTIONS = ["🤝", "😇", "🤗", "😍", "👍", "🎅", "😐", "🥰", "🤩", "😱", "🤣", "😘", "👏", "😛", "😈", "🎉", "⚡️", "🫡", "🤓", "😎", "🏆", "🔥", "🤭", "🌚", "🆒", "👻", "😁"] 
+
 # Website Info:
 WEBSITE_URL_MODE = bool(environ.get('WEBSITE_URL_MODE', False)) # Set True or False
 
