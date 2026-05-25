@@ -4,6 +4,7 @@ TgCrypto
 aiohttp
 pymongo[srv]
 motor
+asyncio
 marshmallow
 umongo
 validators
