@@ -4,6 +4,7 @@
 
 import sys
 import glob
+import pyromod 
 import importlib
 from pathlib import Path
 from pyrogram import idle
