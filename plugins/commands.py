@@ -194,7 +194,7 @@ async def start(client, message):
         [InlineKeyboardButton("❌ CANCEL", callback_data=f"cancel_batch_{user_id}")]
     ])
     CANCEL_PROCESSING[user_id] = False
-    sts = await message.reply(text="<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆ait... Fetching Your Request!</b>", reply_markup=processing_keyboard)
+    sts = await message.reply(text="<b>🔺 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆ait</b>", reply_markup=processing_keyboard)
 
     # 3. DB Base64 Hash Processing System
     try:
