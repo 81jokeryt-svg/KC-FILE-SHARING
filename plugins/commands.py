@@ -164,7 +164,8 @@ async def start(client, message):
         is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
     
         if not is_user_premium and settings.get("premium_mode", False):
-            buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", url=premium_buy_link)]])
+              url = "https://storyhubpratilipifm.blogspot.com/2026/01/subscription-page_6.html"
+            buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", web_app=WebAppInfo(url=url))]])
             await message.reply_text(
                 "👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n"
                 "☂️ ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴘʀᴏᴛᴇᴄᴛᴇᴅ,\n ᴏɴʟʏ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀ ᴄᴀɴ ᴀᴄᴄᴇss ᴛʜɪs ʟɪɴᴋ ᴄᴏɴᴛᴇɴᴛ.\n\n"
