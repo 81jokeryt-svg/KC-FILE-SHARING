@@ -53,7 +53,21 @@ PUBLIC_FILE_STORE = is_enabled((environ.get('PUBLIC_FILE_STORE', "False")), True
 # upi & qr details 
 UPI_ID = os.environ.get("UPI_ID", "6398324472@fam") 
 QR_IMAGE_URL = os.environ.get("QR_IMAGE_URL", "https://i.ibb.co/PGbZztgZ/photo-2026-05-04-16-41-38-7636287934861148164.jpg") 
-
+PREMIUM_PLANS_TEXT = (
+    "💳 <b>PREMIUM SUBSCRIPTION PLAN</b>\n\n"
+    "1. 15₹ = 7 DAY\n"
+    "2. 50₹ = 1 MONTH\n"
+    "3. 120₹ = 3 MONTH\n"
+    "4. 220₹ = 6 MONTH\n\n"
+    "👑 <b>PREMIUM FEATURES :</b>\n"
+    "🛑 SEARCH IN THE BOT\n"
+    "🛑 GET UNLIMITED FILES\n"
+    "🛑 NO NEED TO OPEN LINKS\n"
+    "🛑 NO NEED VERIFY\n"
+    "🛑 DIRECT FILES\n\n"
+    "➡️ CHECK YOUR ACTIVE PLAN BY USING: /myplan\n\n"
+    "‼️ <b>MUST SEND SCREENSHOT AFTER PAYMENT</b>"
+)
 
 # Verify Info :-
 VERIFY_MODE = bool(environ.get('VERIFY_MODE', True)) # Set True or False
