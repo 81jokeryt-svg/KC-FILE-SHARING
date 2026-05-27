@@ -469,15 +469,14 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "show_premium_qr":
         screenshot_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📤 Sᴇɴᴅ Pᴀʏᴍᴇɴᴛ Sᴄʀᴇᴇɴsʜᴏᴛ", url=f"https://t.me/HDFILM0900_BOT")], # Yahan admin ya support handle ka link daal sakte hain
-            [InlineKeyboardButton("⬅️ Bᴀᴄᴋ", callback_data="buy_premium_panel")]
+            [InlineKeyboardButton("❌ Close ❌", callback_data='close_data')]
         ])
-        await query.message.delete()
-        await client.send_photo(
-            chat_id=query.from_user.id,
+         await query.message.reply_photo(
             photo=QR_IMAGE_URL,
             caption=f"⚡ <b>PAY AMOUNT ACCORDING TO YOUR PLAN AND ENJOY PREMIUM MEMBERSHIP !</b>\n\n‼️ <b>MUST SEND SCREENSHOT AFTER PAYMENT</b>\nपेमेंट होने के बाद हमें स्क्रीनशॉट भेजें।",
             reply_markup=screenshot_keyboard
         )
+        await query.answer() 
 
     elif query.data == "show_premium_upi":
         screenshot_keyboard = InlineKeyboardMarkup([
