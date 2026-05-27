@@ -121,17 +121,4 @@ Nᴀᴍᴇ - {}</b>"""
 
 ʏᴏᴜ ɴᴏᴡ ʜᴀᴠᴇ ᴀᴄᴄᴇꜱꜱ ᴜɴᴛɪʟ ᴛʜᴇ ɴᴇxᴛ 1 HOURS.</b></blockquote>"""
     
-    PREMIUM_PLANS_TEXT = """<blockquote>💳 <b>PREMIUM SUBSCRIPTION PLAN</b>
-    1. 15₹ = 7 DAY
-    2. 50₹ = 1 MONTH
-    3. 120₹ = 3 MONTH
-    4. 220₹ = 6 MONTH
-    👑 <b>PREMIUM FEATURES :</b>
-    
-    🛑 GET UNLIMITED FILES
-    🛑 NO NEED TO OPEN LINKS
-    🛑 NO NEED VERIFY
-    🛑 DIRECT FILES
-    ➡️ CHECK YOUR ACTIVE PLAN BY USING: /myplan
-    ‼️ <b>MUST SEND SCREENSHOT AFTER PAYMENT</b></blockquote>"""
     
