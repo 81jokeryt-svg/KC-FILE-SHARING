@@ -50,6 +50,11 @@ BATCH_FILE_CAPTION = environ.get("BATCH_FILE_CAPTION", CUSTOM_FILE_CAPTION)
 # Enable - True or Disable - False
 PUBLIC_FILE_STORE = is_enabled((environ.get('PUBLIC_FILE_STORE', "False")), True)
 
+# upi & qr details 
+UPI_ID = os.environ.get("UPI_ID", "6398324472@fam") 
+QR_IMAGE_URL = os.environ.get("QR_IMAGE_URL", "https://i.ibb.co/PGbZztgZ/photo-2026-05-04-16-41-38-7636287934861148164.jpg") 
+
+
 # Verify Info :-
 VERIFY_MODE = bool(environ.get('VERIFY_MODE', True)) # Set True or False
 
