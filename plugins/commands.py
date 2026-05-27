@@ -165,22 +165,13 @@ async def start(client, message):
     # 2. Gatekeeping check logic 
     try:
         is_user_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
-    
-        # Video Pay-to-Unlock integration for Premium Mode
-        if not is_user_premium and settings.get("premium_mode", True):
-            premium_keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("📊 Qʀ Code", callback_data="show_premium_qr"),
-                    InlineKeyboardButton("💳 Uᴘɪ ID", callback_data="show_premium_upi")
-                ],
-                [
-                    InlineKeyboardButton("❌ Cʟᴏsᴇ", callback_data="close_data")
-                ]
-            ])
+        if not is_user_premium and settings.get("premium_mode", False):
+            buy_btn = InlineKeyboardMarkup([[InlineKeyboardButton("👑 Buy Premium", callback_data='buy_premium_panel')]])
             await message.reply_text(
-                text=PREMIUM_PLANS_TEXT,
-                reply_markup=premium_keyboard,
-                protect_content=is_protect
+                "👑 **यह फाइल प्रीमियम है!**\n\nइसे एक्सेस करने के लिए कृपया प्रीमियम लें।\n\n"
+                "☂️ ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴘʀᴏᴛᴇᴄᴛᴇᴅ,\n ᴏɴʟʏ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀ ᴄᴀɴ ᴀᴄᴄᴇss ᴛʜɪs ʟɪɴᴋ ᴄᴏɴᴛᴇɴᴛ.\n\n"
+                "🔎 ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ", 
+                reply_markup=buy_btn
             )
             return 
         
