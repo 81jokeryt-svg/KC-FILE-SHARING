@@ -1,21 +1,25 @@
-import time
+import math
 from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
-from plugins.dbusers import db  # Aapka existing database module
+from plugins.dbusers import db  # Aapka updated database instance
 from config import *
 
 
-
-def make_progress_bar(percentage):
-    """Percentage ke hisab se filled aur empty status bar banata hai."""
-    filled_length = int(round(10 * percentage / 100))
-    # Filled blocks ke liye '█' aur empty ke liye '░' ka use kiya hai
+def generate_status_bar(filled_percent):
+    """
+    Filled percent ke basis par 10 blocks ki status bar generate karta hai.
+    Filled blocks ke liye '█' aur empty ke liye '░' ka use hota hai.
+    """
+    # Percentage ko 0 aur 100 ke bich secure karne ke liye
+    filled_percent = max(0, min(100, filled_percent))
+    filled_length = int(round(10 * filled_percent / 100))
     bar = '█' * filled_length + '░' * (10 - filled_length)
     return bar
 
 @Client.on_message(filters.command("plan") & filters.private)
 async def plan_command_handler(client: Client, message: Message):
+    """User ke liye subscription plans display karne ke liye command."""
     premium_keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📊 Qʀ Code", callback_data="show_premium_qr"),
@@ -28,53 +32,59 @@ async def plan_command_handler(client: Client, message: Message):
 
 @Client.on_message(filters.command("myplan") & filters.private)
 async def my_plan_handler(client: Client, message: Message):
+    """Premium user validity track karne aur dynamic progress bar dikhane ke liye command."""
     user_id = message.from_user.id
     user_mention = message.from_user.mention
     
-    is_premium = await db.check_premium_status(user_id) if hasattr(db, 'check_premium_status') else False
+    # 1. Check user premium status (Automatic expiry check contains inside db method)
+    is_premium = await db.check_premium_status(user_id)
 
     if is_premium:
-        # DB se timestamps nikalne ka logic (Placeholders - inhe apne DB functions se badlein)
-        # Maan lete hain ki aapke DB me integers/timestamps save hote hain
-        current_time = int(time.time())
+        # DB collection se document direct fetch karenge expiry calculation ke liye
+        user_data = await db.premium.find_one({"id": int(user_id)})
         
-        # Default fallback values (agar aapke DB me expiry track nahi ho rahi toh lifetime active dikhayega)
-        start_time = current_time
-        expiry_time = current_time + 1  # Safe fallback
-        
-        if hasattr(db, 'get_premium_start_time'): # Kab shuru hua
-            start_time = await db.get_premium_start_time(user_id) or current_time
-        if hasattr(db, 'get_premium_expiry_time'): # Kab expire hoga
-            expiry_time = await db.get_premium_expiry_time(user_id) or (current_time + 86400)
-
-        total_duration = expiry_time - start_time
-        time_passed = current_time - start_time
-        
-        # Percentage calculation for status bar
-        if total_duration > 0:
-            percentage = (time_passed / total_duration) * 100
-            percentage = max(0, min(100, percentage)) # 0% se 100% ke beech bound rakhne ke liye
-            # Hame filled bar bache hue din ke liye chahiye, isliye inverse percent nikalenge
-            remaining_percentage = 100 - percentage
+        if user_data and "expire_at" in user_data:
+            expire_at = user_data["expire_at"]
+            current_time = datetime.utcnow()
+            
+            # Time components calculation
+            time_left = expire_at - current_time
+            total_seconds_left = time_left.total_seconds()
+            
+            if total_seconds_left > 0:
+                rem_days = time_left.days
+                rem_hours = time_left.seconds // 3600
+                
+                # Dynamic Percentage calculation for Status Bar
+                # Agar hume bache hue time ki visual bar banani hai:
+                # 7 ya 30 days maximum limits assume karte hue dynamic balance nikalenge
+                if rem_days >= 30:
+                    max_expected_days = 90  # 3 Month plan limit fallback
+                elif rem_days >= 7:
+                    max_expected_days = 30  # 1 Month plan limit fallback
+                else:
+                    max_expected_days = 7   # Weekly plan limit fallback
+                    
+                total_duration_seconds = max_expected_days * 86400
+                # Remaining active timeline percentage
+                remaining_percent = (total_seconds_left / total_duration_seconds) * 100
+                remaining_percent = max(1, min(100, remaining_percent))  # Safe bounds
+                
+                status_bar = generate_status_bar(remaining_percent)
+                validity_text = f"⏳ <b>{rem_days} Days, {rem_hours} Hours remaining</b>"
+                expiry_date_str = expire_at.strftime('%d-%m-%Y %H:%M UTC')
+            else:
+                # Agar calculation gap me expired status true ho jaye
+                status_bar = generate_status_bar(0)
+                remaining_percent = 0
+                validity_text = "⚠️ <b>Expiring soon / Expired</b>"
+                expiry_date_str = "Expired"
         else:
-            remaining_percentage = 100
-
-        # Visual Bar Generator
-        status_bar = make_progress_bar(remaining_percentage)
-        
-        # Remaining time text calculation
-        remaining_seconds = expiry_time - current_time
-        if remaining_seconds > 0:
-            rem_days = remaining_seconds // 86400
-            rem_hours = (remaining_seconds % 86400) // 3600
-            validity_text = f"⏳ <b>{rem_days} Days, {rem_hours} Hours remaining</b>"
-        else:
-            validity_text = "⚠️ <b>Expiring soon / Expired</b>"
-            status_bar = make_progress_bar(0)
-            remaining_percentage = 0
-
-        # Date formatting for User Display
-        expiry_date_str = datetime.fromtimestamp(expiry_time).strftime('%d-%m-%Y %H:%M')
+            # Fallback agar user record custom duration data missing hai
+            status_bar = generate_status_bar(100)
+            remaining_percent = 100
+            validity_text = "✨ <b>Lifetime Premium Active</b>"
+            expiry_date_str = "Unlimited"
 
         success_text = (
             "👑 <b>YOUR PREMIUM STATUS</b>\n"
@@ -85,16 +95,16 @@ async def my_plan_handler(client: Client, message: Message):
             f"📅 <b>Expiry:</b> {expiry_date_str}\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             f"📊 <b>Usage Limit/Time:</b>\n"
-            f"|{status_bar}| {int(remaining_percentage)}%\n\n"
+            f"|{status_bar}| {int(remaining_percent)}%\n\n"
             f"{validity_text}\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "🚀 No ads, no limits! Direct files are active."
+            "🚀 No ads, no limits! Direct high-speed files active."
         )
         await message.reply_text(text=success_text)
         
     else:
-        # Non-premium (Free) User UI with Empty Bar
-        empty_bar = make_progress_bar(0) # 0% visual status
+        # Non-premium / Free User Setup (With Empty Status Bar)
+        empty_bar = generate_status_bar(0)
         free_text = (
             "⚠️ <b>YOUR PREMIUM STATUS</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
