@@ -1,4 +1,4 @@
-Pyrofork
+kurigram 
 TgCrypto
 aiohttp
 pymongo[srv]
@@ -17,3 +17,5 @@ gunicorn
 Jinja2
 werkzeug
 itsdangerous
+
+
